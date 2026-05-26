@@ -1,0 +1,38 @@
+acl trusted_clients {
+{% for network in bind9_allowed_networks %}
+    {{ network }};
+{% endfor %}
+};
+
+options {
+    directory "/var/cache/bind";
+
+    listen-on {
+        127.0.0.1;
+        {{ bind9_listen_ip }};
+    };
+
+    listen-on-v6 {
+        none;
+    };
+
+    allow-query {
+        trusted_clients;
+    };
+
+    allow-recursion {
+        trusted_clients;
+    };
+
+    recursion yes;
+
+    forwarders {
+{% for forwarder in bind9_forwarders %}
+        {{ forwarder }};
+{% endfor %}
+    };
+
+    dnssec-validation auto;
+
+    auth-nxdomain no;
+};

@@ -1,0 +1,62 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install KEA DHCP packages
+  ansible.builtin.apt:
+    name: "{{ kea_package_name }}"
+    state: present
+
+- name: Ensure KEA config directory exists
+  ansible.builtin.file:
+    path: /etc/kea
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check if KEA HA hook exists
+  ansible.builtin.stat:
+    path: "{{ kea_ha_hook_path }}"
+  register: kea_ha_hook
+
+- name: Stop play when KEA HA hook is missing
+  ansible.builtin.fail:
+    msg: >
+      KEA HA hook is missing at {{ kea_ha_hook_path }}.
+      Check the correct path with: sudo find /usr -name "libdhcp_ha.so"
+  when: not kea_ha_hook.stat.exists
+
+- name: Deploy KEA Control Agent configuration
+  ansible.builtin.template:
+    src: kea-ctrl-agent.conf.j2
+    dest: "{{ kea_ctrl_agent_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "kea-ctrl-agent -t %s"
+  notify: Restart KEA Control Agent
+
+- name: Deploy KEA DHCPv4 configuration
+  ansible.builtin.template:
+    src: kea-dhcp4.conf.j2
+    dest: "{{ kea_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "kea-dhcp4 -t %s"
+  notify: Restart KEA DHCP4
+
+- name: Enable and start KEA Control Agent service
+  ansible.builtin.systemd:
+    name: "{{ kea_ctrl_agent_service_name }}"
+    enabled: true
+    state: started
+
+- name: Enable and start KEA DHCP4 service
+  ansible.builtin.systemd:
+    name: "{{ kea_service_name }}"
+    enabled: true
+    state: started

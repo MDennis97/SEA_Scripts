@@ -1,0 +1,128 @@
+{
+  "Dhcp4": {
+    "interfaces-config": {
+      "interfaces": [
+        "{{ kea_interface }}"
+      ],
+      "dhcp-socket-type": "raw"
+    },
+
+    "control-socket": {
+      "socket-type": "unix",
+      "socket-name": "/run/kea/kea4-ctrl-socket"
+    },
+
+    "hooks-libraries": [
+      {
+        "library": "{{ kea_ha_hook_path }}",
+        "parameters": {
+          "high-availability": [
+            {
+              "this-server-name": "{{ kea_ha_name }}",
+              "mode": "{{ kea_ha_mode }}",
+              "heartbeat-delay": {{ kea_ha_heartbeat_delay }},
+              "max-response-delay": {{ kea_ha_max_response_delay }},
+              "max-ack-delay": {{ kea_ha_max_ack_delay }},
+              "max-unacked-clients": {{ kea_ha_max_unacked_clients }},
+              "peers": [
+{% for peer in kea_ha_peers %}
+                {
+                  "name": "{{ peer.name }}",
+                  "url": "{{ peer.url }}",
+                  "role": "{{ peer.role }}",
+                  "auto-failover": {{ peer.auto_failover | lower }}
+                }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+              ]
+            }
+          ]
+        }
+      }
+    ],
+
+    "lease-database": {
+      "type": "memfile",
+      "persist": true,
+      "name": "/var/lib/kea/dhcp4.leases",
+      "lfc-interval": 3600
+    },
+
+    "renew-timer": {{ kea_renew_timer }},
+    "rebind-timer": {{ kea_rebind_timer }},
+    "valid-lifetime": {{ kea_valid_lifetime }},
+    "max-valid-lifetime": {{ kea_max_valid_lifetime }},
+
+    "option-data": [
+      {
+        "name": "domain-name",
+        "data": "{{ kea_domain_name }}"
+      },
+      {
+        "name": "domain-name-servers",
+        "data": "{{ kea_dns_servers | join(', ') }}"
+      },
+      {
+        "name": "ntp-servers",
+        "data": "{{ kea_ntp_servers | join(', ') }}"
+      }
+    ],
+
+    "subnet4": [
+{% for subnet in kea_subnets %}
+      {
+        "id": {{ subnet.id }},
+        "subnet": "{{ subnet.subnet }}",
+        "pools": [
+          {
+            "pool": "{{ subnet.pool_start }} - {{ subnet.pool_end }}"
+          }
+        ],
+        "option-data": [
+          {
+            "name": "routers",
+            "data": "{{ subnet.gateway }}"
+          },
+          {
+            "name": "domain-name-servers",
+            "data": "{{ kea_dns_servers | join(', ') }}"
+          },
+          {
+            "name": "domain-name",
+            "data": "{{ kea_domain_name }}"
+          },
+          {
+            "name": "ntp-servers",
+            "data": "{{ kea_ntp_servers | join(', ') }}"
+          }
+        ]{% set subnet_reservations = kea_reservations | default([]) | selectattr('subnet_id', 'equalto', subnet.id) | list %}{% if subnet_reservations | length > 0 %},
+        "reservations": [
+{% for reservation in subnet_reservations %}
+          {
+            "hw-address": "{{ reservation.hw_address }}",
+            "ip-address": "{{ reservation.ip_address }}",
+            "hostname": "{{ reservation.hostname }}"
+          }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+        ]
+{% endif %}
+      }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+    ],
+
+    "loggers": [
+      {
+        "name": "kea-dhcp4",
+        "output_options": [
+          {
+            "output": "syslog"
+          }
+        ],
+        "severity": "INFO",
+        "debuglevel": 0
+      }
+    ]
+  }
+}

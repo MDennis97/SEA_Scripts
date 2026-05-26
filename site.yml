@@ -1,0 +1,14 @@
+---
+- name: Configure redundant KEA DHCP servers
+  hosts: dhcp_servers
+  become: true
+
+  roles:
+    - kea_dhcp
+
+- name: Configure internal BIND9 DNS servers
+  hosts: dns_servers
+  become: true
+
+  roles:
+    - bind9_dns

@@ -1,0 +1,87 @@
+---
+bind9_package_name: bind9
+bind9_utils_package_name: dnsutils
+bind9_service_name: bind9
+
+bind9_domain: icu-01.local
+bind9_reverse_zone: 1.16.172.in-addr.arpa
+
+bind9_primary_ip: 172.16.1.34
+bind9_secondary_ip: 172.16.1.35
+
+bind9_forwarders:
+  - 1.1.1.1
+  - 8.8.8.8
+
+bind9_allowed_networks:
+  - 127.0.0.1
+  - 172.16.0.0/24
+  - 172.16.1.0/24
+  - 10.22.66.0/28
+  - 10.2.128.0/28
+
+bind9_zone_file: /etc/bind/zones/db.icu-01.local
+bind9_reverse_zone_file: /etc/bind/zones/db.172.16.1
+
+bind9_zone_serial: "2026051301"
+
+bind9_records:
+  - name: dns01
+    ip: 172.16.1.34
+
+  - name: dns02
+    ip: 172.16.1.35
+
+  - name: dhcp01
+    ip: 172.16.1.38
+
+  - name: dhcp02
+    ip: 172.16.1.39
+
+  - name: ntp01
+    ip: 172.16.1.40
+
+  - name: ntp02
+    ip: 172.16.1.41
+
+  - name: monitoring01
+    ip: 172.16.1.66
+
+  - name: monitoring02
+    ip: 172.16.1.67
+
+  - name: wazuh01
+    ip: 172.16.1.68
+
+  - name: wazuh02
+    ip: 172.16.1.69
+
+  - name: vpn01
+    ip: 172.16.1.98
+
+  - name: vpn02
+    ip: 172.16.1.99
+
+  - name: bastion01
+    ip: 172.16.1.100
+
+  - name: bastion02
+    ip: 172.16.1.101
+
+  - name: soc-workstation01
+    ip: 172.16.1.102
+
+  - name: soc-workstation02
+    ip: 172.16.1.103
+
+  - name: ldap01
+    ip: 172.16.1.130
+
+  - name: ldap02
+    ip: 172.16.1.131
+
+  - name: auth01
+    ip: 172.16.1.132
+
+  - name: auth02
+    ip: 172.16.1.133

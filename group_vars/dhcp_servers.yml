@@ -1,0 +1,93 @@
+---
+kea_package_name: kea
+kea_service_name: kea-dhcp4-server
+kea_config_path: /etc/kea/kea-dhcp4.conf
+
+kea_ctrl_agent_service_name: kea-ctrl-agent
+kea_ctrl_agent_config_path: /etc/kea/kea-ctrl-agent.conf
+kea_ctrl_agent_port: 8000
+
+kea_ha_hook_path: /usr/lib/x86_64-linux-gnu/kea/hooks/libdhcp_ha.so
+
+kea_valid_lifetime: 3600
+kea_max_valid_lifetime: 7200
+kea_renew_timer: 900
+kea_rebind_timer: 1800
+
+kea_domain_name: icu-01.local
+
+kea_dns_servers:
+  - 172.16.1.34
+  - 172.16.1.35
+
+kea_ntp_servers:
+  - 172.16.1.40
+  - 172.16.1.41
+
+kea_ha_mode: hot-standby
+kea_ha_heartbeat_delay: 10000
+kea_ha_max_response_delay: 60000
+kea_ha_max_ack_delay: 5000
+kea_ha_max_unacked_clients: 5
+
+kea_ha_peers:
+  - name: dhcp01
+    url: "http://172.16.1.38:8000/"
+    role: primary
+    auto_failover: true
+
+  - name: dhcp02
+    url: "http://172.16.1.39:8000/"
+    role: standby
+    auto_failover: true
+
+kea_subnets:
+  - id: 10
+    name: Gastennetwerk
+    vlan: 10
+    subnet: 172.16.0.0/26
+    gateway: 172.16.0.1
+    pool_start: 172.16.0.10
+    pool_end: 172.16.0.60
+
+  - id: 20
+    name: Observability intern
+    vlan: 20
+    subnet: 172.16.0.64/27
+    gateway: 172.16.0.65
+    pool_start: 172.16.0.70
+    pool_end: 172.16.0.90
+
+  - id: 30
+    name: Werkplekken intern
+    vlan: 30
+    subnet: 172.16.0.96/27
+    gateway: 172.16.0.97
+    pool_start: 172.16.0.100
+    pool_end: 172.16.0.120
+
+  - id: 40
+    name: Security
+    vlan: 40
+    subnet: 172.16.0.128/27
+    gateway: 172.16.0.129
+    pool_start: 172.16.0.135
+    pool_end: 172.16.0.155
+
+  - id: 99
+    name: Management
+    vlan: 99
+    subnet: 172.16.0.160/27
+    gateway: 172.16.0.161
+    pool_start: 172.16.0.170
+    pool_end: 172.16.0.185
+
+  - id: 427
+    name: Internal Access
+    vlan: 427
+    subnet: 172.16.1.96/27
+    gateway: 172.16.1.97
+    pool_start: 172.16.1.110
+    pool_end: 172.16.1.125
+
+kea_reservations: []

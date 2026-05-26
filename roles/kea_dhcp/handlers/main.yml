@@ -1,0 +1,10 @@
+---
+- name: Restart KEA Control Agent
+  ansible.builtin.systemd:
+    name: "{{ kea_ctrl_agent_service_name }}"
+    state: restarted
+
+- name: Restart KEA DHCP4
+  ansible.builtin.systemd:
+    name: "{{ kea_service_name }}"
+    state: restarted

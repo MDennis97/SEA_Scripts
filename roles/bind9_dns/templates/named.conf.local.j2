@@ -1,0 +1,41 @@
+{% if bind9_role == "primary" %}
+zone "{{ bind9_domain }}" {
+    type master;
+    file "{{ bind9_zone_file }}";
+    allow-transfer {
+        {{ bind9_secondary_ip }};
+    };
+    also-notify {
+        {{ bind9_secondary_ip }};
+    };
+};
+
+zone "{{ bind9_reverse_zone }}" {
+    type master;
+    file "{{ bind9_reverse_zone_file }}";
+    allow-transfer {
+        {{ bind9_secondary_ip }};
+    };
+    also-notify {
+        {{ bind9_secondary_ip }};
+    };
+};
+{% endif %}
+
+{% if bind9_role == "secondary" %}
+zone "{{ bind9_domain }}" {
+    type slave;
+    file "/var/cache/bind/db.{{ bind9_domain }}";
+    masters {
+        {{ bind9_primary_ip }};
+    };
+};
+
+zone "{{ bind9_reverse_zone }}" {
+    type slave;
+    file "/var/cache/bind/db.172.16.1";
+    masters {
+        {{ bind9_primary_ip }};
+    };
+};
+{% endif %}

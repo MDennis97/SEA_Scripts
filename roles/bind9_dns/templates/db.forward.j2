@@ -1,0 +1,17 @@
+$TTL    604800
+@       IN      SOA     dns01.{{ bind9_domain }}. admin.{{ bind9_domain }}. (
+                        {{ bind9_zone_serial }} ; Serial
+                        604800         ; Refresh
+                        86400          ; Retry
+                        2419200        ; Expire
+                        604800 )       ; Negative Cache TTL
+
+@       IN      NS      dns01.{{ bind9_domain }}.
+@       IN      NS      dns02.{{ bind9_domain }}.
+
+dns01   IN      A       {{ bind9_primary_ip }}
+dns02   IN      A       {{ bind9_secondary_ip }}
+
+{% for record in bind9_records %}
+{{ "%-24s"|format(record.name) }} IN      A       {{ record.ip }}
+{% endfor %}

@@ -1,0 +1,4 @@
+---
+bind9_hostname: dns01
+bind9_role: primary
+bind9_listen_ip: 172.16.1.34

@@ -1,0 +1,4 @@
+---
+bind9_hostname: dns02
+bind9_role: secondary
+bind9_listen_ip: 172.16.1.35

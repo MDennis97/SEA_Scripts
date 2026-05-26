@@ -1,0 +1,8 @@
+---
+kea_hostname: dhcp02
+kea_interface: ens18
+
+kea_server_ip: 172.16.1.39
+
+kea_ha_name: dhcp02
+kea_ha_role: standby
