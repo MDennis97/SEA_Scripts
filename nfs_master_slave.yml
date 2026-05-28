@@ -1,0 +1,101 @@
+---
+- name: NFS master en slave installeren
+  hosts: nfsservers
+  become: true
+
+  tasks:
+    - name: Package lijst updaten
+      apt:
+        update_cache: yes
+
+    - name: NFS en rsync installeren
+      apt:
+        name:
+          - "{{ nfs_package_name }}"
+          - "{{ nfs_utils_package_name }}"
+          - rsync
+        state: present
+
+    - name: NFS hoofdmappen aanmaken
+      file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      loop: "{{ nfs_shares }}"
+
+    - name: /etc/exports configureren
+      copy:
+        dest: /etc/exports
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          {% for share in nfs_shares %}
+          {% for network in nfs_allowed_networks %}
+          {{ share.path }} {{ network }}({{ nfs_export_options | join(',') }})
+          {% endfor %}
+          {% endfor %}
+
+    - name: NFS exports opnieuw laden
+      command: exportfs -ra
+
+    - name: NFS-service starten en inschakelen
+      service:
+        name: "{{ nfs_service_name }}"
+        state: restarted
+        enabled: yes
+
+
+- name: Rsync daemon instellen op NFS slave
+  hosts: nfs_slave
+  become: true
+
+  tasks:
+    - name: Rsync configuratiebestand maken op slave
+      copy:
+        dest: /etc/rsyncd.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          uid = root
+          gid = root
+          use chroot = no
+          max connections = 4
+          log file = /var/log/rsyncd.log
+
+          [nfsdata]
+              path = /srv/nfs
+              comment = NFS slave data
+              read only = false
+              hosts allow = {{ nfs_master_ip }}
+
+    - name: Rsync daemon inschakelen
+      lineinfile:
+        path: /etc/default/rsync
+        regexp: "^RSYNC_ENABLE="
+        line: "RSYNC_ENABLE=true"
+        create: yes
+
+    - name: Rsync-service starten en inschakelen
+      service:
+        name: rsync
+        state: restarted
+        enabled: yes
+
+
+- name: Synchronisatie instellen op NFS master
+  hosts: nfs_master
+  become: true
+
+  tasks:
+    - name: Cronjob maken voor synchronisatie naar slave
+      cron:
+        name: "Synchroniseer NFS-data naar slave"
+        minute: "{{ nfs_sync_interval_minutes }}"
+        job: "rsync -az --delete /srv/nfs/ {{ nfs_slave_ip }}::nfsdata/"
+
+    - name: Eerste synchronisatie uitvoeren
+      command: "rsync -az --delete /srv/nfs/ {{ nfs_slave_ip }}::nfsdata/"

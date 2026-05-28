@@ -1,0 +1,51 @@
+---
+nfs_package_name: nfs-kernel-server
+nfs_utils_package_name: nfs-common
+nfs_service_name: nfs-kernel-server
+
+nfs_domain: icu-01.local
+
+nfs_master_name: fileserver01
+nfs_slave_name: fileserver02
+
+nfs_master_ip: 172.16.1.4
+nfs_slave_ip: 172.16.1.5
+
+nfs_vlan: 424
+nfs_network: 172.16.1.0/27
+nfs_gateway: 172.16.1.1
+
+nfs_sync_interval_minutes: "*/5"
+
+nfs_allowed_networks:
+  - 127.0.0.1
+  - 172.16.0.0/24
+  - 172.16.1.0/24
+  - 10.22.66.0/28
+  - 10.2.128.0/29
+  - 10.2.128.8/29
+
+nfs_export_options:
+  - rw
+  - sync
+  - no_subtree_check
+  - root_squash
+
+nfs_shares:
+  - name: shared
+    path: /srv/nfs/shared
+    owner: nobody
+    group: nogroup
+    mode: "0777"
+
+  - name: projectdata
+    path: /srv/nfs/projectdata
+    owner: nobody
+    group: nogroup
+    mode: "0777"
+
+  - name: backups
+    path: /srv/nfs/backups
+    owner: nobody
+    group: nogroup
+    mode: "0770"
