@@ -1,0 +1,53 @@
+services:
+  openldap:
+    image: {{ openldap_image }}
+    container_name: openldap
+    restart: unless-stopped
+    hostname: openldap
+    environment:
+      LDAP_ORGANISATION: "School"
+      LDAP_DOMAIN: "{{ ldap_domain }}"
+      LDAP_ADMIN_PASSWORD: "{{ ldap_admin_password }}"
+      LDAP_TLS: "false"
+    command: "--copy-service"
+    ports:
+      - "389:389"
+    volumes:
+      - openldap_database:/var/lib/ldap
+      - openldap_config:/etc/ldap/slapd.d
+      - ./ldap/bootstrap:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
+    networks:
+      - identity_net
+
+  keycloak:
+    image: {{ keycloak_image }}
+    container_name: keycloak
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: "{{ keycloak_admin_user }}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "{{ keycloak_admin_password }}"
+      KEYCLOAK_ADMIN: "{{ keycloak_admin_user }}"
+      KEYCLOAK_ADMIN_PASSWORD: "{{ keycloak_admin_password }}"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: "{{ keycloak_hostname }}"
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY_HEADERS: "xforwarded"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - openldap
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    networks:
+      - identity_net
+
+volumes:
+  openldap_database:
+  openldap_config:
+  keycloak_data:
+
+networks:
+  identity_net:
+    driver: bridge

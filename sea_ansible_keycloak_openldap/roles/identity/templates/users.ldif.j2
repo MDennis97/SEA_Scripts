@@ -1,0 +1,27 @@
+dn: ou=users,{{ ldap_base_dn }}
+objectClass: organizationalUnit
+ou: users
+
+dn: uid=testuser,ou=users,{{ ldap_base_dn }}
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: Test User
+sn: User
+givenName: Test
+uid: testuser
+mail: testuser@{{ ldap_domain }}
+userPassword: Password123!
+
+dn: uid=student,ou=users,{{ ldap_base_dn }}
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: Student User
+sn: User
+givenName: Student
+uid: student
+mail: student@{{ ldap_domain }}
+userPassword: Student123!

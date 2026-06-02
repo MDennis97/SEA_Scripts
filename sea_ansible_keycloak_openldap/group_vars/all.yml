@@ -1,0 +1,58 @@
+# =========================================================
+# SEA schoolproject - redundante identity stack met SSO + MFA
+# =========================================================
+
+# Domein voor OpenLDAP
+ldap_domain: school.local
+ldap_base_dn: dc=school,dc=local
+ldap_admin_password: ChangeMeLDAP123!
+
+# Keycloak admin-account
+keycloak_admin_user: admin
+keycloak_admin_password: ChangeMeKeycloak123!
+
+# Keycloak realm
+keycloak_realm: school
+
+# Eén vaste naam voor applicaties zoals Grafana.
+# Zet deze naam op je client/Grafana-machine in /etc/hosts naar het virtual IP.
+keycloak_hostname: auth.school.local
+
+# SSO client voor Grafana/OpenID Connect
+# Grafana gebruikt deze gegevens voor Generic OAuth.
+sso_client_id: grafana
+sso_client_secret: ChangeMeGrafanaSecret123!
+grafana_hostname: grafana.school.local
+grafana_port: 3000
+
+# MFA/OTP-instellingen in Keycloak
+# configure_totp_required=true zorgt dat gebruikers bij eerste login een authenticator-app moeten koppelen.
+mfa_enabled: true
+configure_totp_required: true
+otp_policy_type: totp
+otp_policy_algorithm: HmacSHA1
+otp_policy_digits: 6
+otp_policy_period: 30
+
+# Virtual IP voor automatische failover met keepalived.
+# Kies een vrij IP-adres binnen hetzelfde subnet als je VM's.
+keepalived_virtual_ip: 192.168.56.100
+keepalived_virtual_prefix: 24
+
+# Netwerkinterface waarop het virtual IP geplaatst wordt.
+# Controleer op beide servers met: ip a
+keepalived_interface: enp0s3
+
+# VRRP-instellingen. Zelfde router_id en wachtwoord op beide nodes.
+keepalived_router_id: 51
+keepalived_auth_pass: school123
+
+# Unicast werkt vaak betrouwbaarder in VM/lab-netwerken dan multicast.
+keepalived_use_unicast: true
+
+# Map op de server waarin docker-compose.yml en LDIF komen te staan
+identity_project_dir: /opt/school-identity
+
+# Container images bewust gepind voor reproduceerbaarheid
+openldap_image: osixia/openldap:1.5.0
+keycloak_image: quay.io/keycloak/keycloak:26.0.0

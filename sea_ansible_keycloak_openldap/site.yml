@@ -1,0 +1,8 @@
+---
+- name: Deploy SEA redundant Keycloak and OpenLDAP lab setup with VIP, SSO and MFA
+  hosts: identity
+  become: true
+  roles:
+    - docker
+    - identity
+    - keepalived

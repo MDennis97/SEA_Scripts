@@ -1,0 +1,173 @@
+---
+- name: Create project directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ identity_project_dir }}"
+    - "{{ identity_project_dir }}/ldap"
+    - "{{ identity_project_dir }}/ldap/bootstrap"
+
+- name: Place docker compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ identity_project_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Place OpenLDAP bootstrap users
+  ansible.builtin.template:
+    src: users.ldif.j2
+    dest: "{{ identity_project_dir }}/ldap/bootstrap/01-users.ldif"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Start containers
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ identity_project_dir }}"
+  changed_when: true
+
+- name: Wait until Keycloak container accepts CLI login
+  ansible.builtin.command: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh config credentials
+    --server http://localhost:8080
+    --realm master
+    --user {{ keycloak_admin_user }}
+    --password {{ keycloak_admin_password }}
+  register: keycloak_login
+  retries: 50
+  delay: 5
+  until: keycloak_login.rc == 0
+  changed_when: false
+  no_log: true
+
+- name: Check if Keycloak realm exists
+  ansible.builtin.command: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh get realms/{{ keycloak_realm }}
+  register: realm_check
+  failed_when: false
+  changed_when: false
+
+- name: Create Keycloak realm
+  ansible.builtin.command: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh create realms
+    -s realm={{ keycloak_realm }}
+    -s enabled=true
+    -s registrationAllowed=false
+    -s loginWithEmailAllowed=true
+    -s duplicateEmailsAllowed=false
+    -s resetPasswordAllowed=true
+  when: realm_check.rc != 0
+
+- name: Configure realm SSO token settings
+  ansible.builtin.command: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh update realms/{{ keycloak_realm }}
+    -s ssoSessionIdleTimeout=1800
+    -s ssoSessionMaxLifespan=36000
+    -s accessTokenLifespan=300
+  changed_when: true
+
+- name: Configure realm OTP policy
+  ansible.builtin.command: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh update realms/{{ keycloak_realm }}
+    -s otpPolicyType={{ otp_policy_type }}
+    -s otpPolicyAlgorithm={{ otp_policy_algorithm }}
+    -s otpPolicyDigits={{ otp_policy_digits }}
+    -s otpPolicyPeriod={{ otp_policy_period }}
+  when: mfa_enabled | bool
+  changed_when: true
+
+- name: Enable Configure OTP required action
+  ansible.builtin.command: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh update authentication/required-actions/CONFIGURE_TOTP
+    -r {{ keycloak_realm }}
+    -s enabled=true
+    -s defaultAction={{ configure_totp_required | lower }}
+  when: mfa_enabled | bool
+  changed_when: true
+
+- name: Check if LDAP provider exists in Keycloak realm
+  ansible.builtin.shell: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh get components -r {{ keycloak_realm }}
+    -q name=openldap | grep 'openldap'
+  register: ldap_provider_check
+  failed_when: false
+  changed_when: false
+
+- name: Add OpenLDAP provider to Keycloak realm
+  ansible.builtin.command: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh create components -r {{ keycloak_realm }}
+    -s name=openldap
+    -s providerId=ldap
+    -s providerType=org.keycloak.storage.UserStorageProvider
+    -s 'config.enabled=["true"]'
+    -s 'config.priority=["0"]'
+    -s 'config.fullSyncPeriod=["-1"]'
+    -s 'config.changedSyncPeriod=["-1"]'
+    -s 'config.cachePolicy=["DEFAULT"]'
+    -s 'config.vendor=["other"]'
+    -s 'config.usernameLDAPAttribute=["uid"]'
+    -s 'config.rdnLDAPAttribute=["uid"]'
+    -s 'config.uuidLDAPAttribute=["entryUUID"]'
+    -s 'config.userObjectClasses=["inetOrgPerson, organizationalPerson"]'
+    -s 'config.connectionUrl=["ldap://openldap:389"]'
+    -s 'config.usersDn=["ou=users,{{ ldap_base_dn }}"]'
+    -s 'config.authType=["simple"]'
+    -s 'config.bindDn=["cn=admin,{{ ldap_base_dn }}"]'
+    -s 'config.bindCredential=["{{ ldap_admin_password }}"]'
+    -s 'config.searchScope=["1"]'
+    -s 'config.editMode=["READ_ONLY"]'
+    -s 'config.importEnabled=["true"]'
+    -s 'config.syncRegistrations=["false"]'
+    -s 'config.pagination=["true"]'
+  when: ldap_provider_check.rc != 0
+  no_log: true
+
+- name: Check if Grafana SSO client exists
+  ansible.builtin.shell: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh get clients -r {{ keycloak_realm }}
+    -q clientId={{ sso_client_id }} | grep '"clientId"'
+  register: grafana_client_check
+  failed_when: false
+  changed_when: false
+
+- name: Create Grafana SSO OIDC client
+  ansible.builtin.command: >-
+    docker exec keycloak /opt/keycloak/bin/kcadm.sh create clients -r {{ keycloak_realm }}
+    -s clientId={{ sso_client_id }}
+    -s name="Grafana SSO"
+    -s enabled=true
+    -s protocol=openid-connect
+    -s publicClient=false
+    -s clientAuthenticatorType=client-secret
+    -s secret={{ sso_client_secret }}
+    -s standardFlowEnabled=true
+    -s directAccessGrantsEnabled=false
+    -s implicitFlowEnabled=false
+    -s serviceAccountsEnabled=false
+    -s frontchannelLogout=true
+    -s rootUrl="http://{{ grafana_hostname }}:{{ grafana_port }}"
+    -s baseUrl="/"
+    -s adminUrl="http://{{ grafana_hostname }}:{{ grafana_port }}"
+    -s 'redirectUris=["http://{{ grafana_hostname }}:{{ grafana_port }}/login/generic_oauth","http://localhost:{{ grafana_port }}/login/generic_oauth","http://127.0.0.1:{{ grafana_port }}/login/generic_oauth","http://*:{{ grafana_port }}/login/generic_oauth"]'
+    -s 'webOrigins=["+"]'
+  when: grafana_client_check.rc != 0
+  no_log: true
+
+- name: Show deployed URLs and SSO details
+  ansible.builtin.debug:
+    msg:
+      - "Node Keycloak: http://{{ ansible_host | default(inventory_hostname) }}:8080"
+      - "Virtual IP Keycloak: http://{{ keepalived_virtual_ip }}:8080"
+      - "Hostname Keycloak: http://{{ keycloak_hostname }}:8080"
+      - "Realm: {{ keycloak_realm }}"
+      - "Issuer URL for SSO: http://{{ keycloak_hostname }}:8080/realms/{{ keycloak_realm }}"
+      - "Grafana client_id: {{ sso_client_id }}"
+      - "MFA enabled: {{ mfa_enabled }}; users must configure OTP on first login: {{ configure_totp_required }}"
+      - "Test LDAP users: testuser / Password123! and student / Student123!"

@@ -1,0 +1,41 @@
+---
+- name: Install keepalived and curl
+  ansible.builtin.apt:
+    name:
+      - keepalived
+      - curl
+    state: present
+    update_cache: true
+  when: ansible_os_family == "Debian"
+
+- name: Create Keycloak healthcheck script for keepalived
+  ansible.builtin.copy:
+    dest: /usr/local/bin/check-keycloak.sh
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      curl -fsS http://127.0.0.1:8080/realms/{{ keycloak_realm }} > /dev/null
+
+- name: Deploy keepalived config
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart keepalived
+
+- name: Enable and start keepalived
+  ansible.builtin.service:
+    name: keepalived
+    state: started
+    enabled: true
+
+- name: Show virtual IP information
+  ansible.builtin.debug:
+    msg:
+      - "Virtual IP: {{ keepalived_virtual_ip }}"
+      - "Hostname to use from Grafana/applications: {{ keycloak_hostname }}"
+      - "Add this on clients if you do not have DNS: {{ keepalived_virtual_ip }} {{ keycloak_hostname }}"
