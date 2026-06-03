@@ -1,0 +1,7 @@
+all:
+  children:
+    bastion_servers:
+      hosts:
+        localhost:
+          ansible_connection: local
+          ansible_become: true

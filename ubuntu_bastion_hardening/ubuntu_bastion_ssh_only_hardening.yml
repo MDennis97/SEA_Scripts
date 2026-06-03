@@ -1,0 +1,241 @@
+---
+- name: Harden Ubuntu Bastion Server - SSH only
+  hosts: bastion_servers
+  become: true
+
+  vars:
+    ssh_port: 22
+    allowed_ssh_networks:
+      - "172.16.0.0/26"
+      - "172.16.0.64/27"
+      - "172.16.0.96/27"
+      - "172.16.0.128/27"
+      - "172.16.0.160/27"
+      - "172.16.1.0/27"
+      - "172.16.1.32/27"
+      - "172.16.1.64/27"
+      - "172.16.1.96/27"
+      - "172.16.1.128/27"
+      - "172.16.1.160/28"
+      - "10.2.128.0/29"
+      - "10.2.128.8/29"
+
+    packages_to_install:
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+      - curl
+      - vim
+      - ca-certificates
+
+    packages_to_remove:
+      - telnet
+      - rsh-client
+      - talk
+      - xinetd
+      - nis
+
+  tasks:
+    - name: Update apt package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name: "{{ packages_to_install }}"
+        state: present
+
+    - name: Reload systemd after package installation
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Remove insecure legacy packages
+      ansible.builtin.apt:
+        name: "{{ packages_to_remove }}"
+        state: absent
+        purge: true
+
+    - name: Enable automatic security updates
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+
+    - name: Configure unattended-upgrades for security updates
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          Unattended-Upgrade::Allowed-Origins {
+              "${distro_id}:${distro_codename}-security";
+              "${distro_id}ESMApps:${distro_codename}-apps-security";
+              "${distro_id}ESM:${distro_codename}-infra-security";
+          };
+          Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+          Unattended-Upgrade::Remove-Unused-Dependencies "true";
+          Unattended-Upgrade::Automatic-Reboot "false";
+
+    - name: Disable root SSH login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: Restart ssh
+
+    - name: Keep SSH password authentication enabled
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication yes'
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: Restart ssh
+
+    - name: Disable empty SSH passwords
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitEmptyPasswords'
+        line: 'PermitEmptyPasswords no'
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: Restart ssh
+
+    - name: Limit SSH authentication attempts
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?MaxAuthTries'
+        line: 'MaxAuthTries 3'
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: Restart ssh
+
+    - name: Set SSH idle timeout
+      ansible.builtin.blockinfile:
+        path: /etc/ssh/sshd_config
+        marker: "# {mark} ANSIBLE MANAGED BASTION SSH HARDENING"
+        block: |
+          ClientAliveInterval 300
+          ClientAliveCountMax 2
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: Restart ssh
+
+    - name: Set UFW default incoming policy to deny
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Set UFW default outgoing policy to allow
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: Allow SSH only from approved networks
+      community.general.ufw:
+        rule: allow
+        port: "{{ ssh_port }}"
+        proto: tcp
+        from_ip: "{{ item }}"
+        comment: "Allow SSH from {{ item }}"
+      loop: "{{ allowed_ssh_networks }}"
+
+    - name: Enable UFW firewall
+      community.general.ufw:
+        state: enabled
+
+    - name: Configure Fail2Ban SSH jail
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/sshd.local
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [sshd]
+          enabled = true
+          port = {{ ssh_port }}
+          filter = sshd
+          logpath = /var/log/auth.log
+          maxretry = 3
+          findtime = 10m
+          bantime = 1h
+      notify: Restart fail2ban
+
+    - name: Check if fail2ban service exists in /lib/systemd/system
+      ansible.builtin.stat:
+        path: /lib/systemd/system/fail2ban.service
+      register: fail2ban_service_lib
+
+    - name: Check if fail2ban service exists in /usr/lib/systemd/system
+      ansible.builtin.stat:
+        path: /usr/lib/systemd/system/fail2ban.service
+      register: fail2ban_service_usr
+
+    - name: Enable and start fail2ban when service exists
+      ansible.builtin.systemd:
+        name: fail2ban
+        enabled: true
+        state: started
+      when: fail2ban_service_lib.stat.exists or fail2ban_service_usr.stat.exists
+
+    - name: Disable IPv4 forwarding
+      ansible.builtin.sysctl:
+        name: net.ipv4.ip_forward
+        value: "0"
+        state: present
+        reload: true
+
+    - name: Enable TCP SYN cookies
+      ansible.builtin.sysctl:
+        name: net.ipv4.tcp_syncookies
+        value: "1"
+        state: present
+        reload: true
+
+    - name: Disable ICMP redirects
+      ansible.builtin.sysctl:
+        name: net.ipv4.conf.all.accept_redirects
+        value: "0"
+        state: present
+        reload: true
+
+    - name: Disable secure ICMP redirects
+      ansible.builtin.sysctl:
+        name: net.ipv4.conf.all.secure_redirects
+        value: "0"
+        state: present
+        reload: true
+
+    - name: Disable source routed packets
+      ansible.builtin.sysctl:
+        name: net.ipv4.conf.all.accept_source_route
+        value: "0"
+        state: present
+        reload: true
+
+    - name: Enable reverse path filtering
+      ansible.builtin.sysctl:
+        name: net.ipv4.conf.all.rp_filter
+        value: "1"
+        state: present
+        reload: true
+
+  handlers:
+    - name: Restart ssh
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+
+    - name: Restart fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: restarted
+        daemon_reload: true
+      failed_when: false
