@@ -1,0 +1,54 @@
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+    update_cache: true
+
+- name: Remove default Nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Create web root
+  file:
+    path: "{{ web_root }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+
+- name: Deploy index page
+  template:
+    src: index.html.j2
+    dest: "{{ web_root }}/index.html"
+    owner: www-data
+    group: www-data
+    mode: "0644"
+
+- name: Deploy Nginx site config
+  template:
+    src: nginx-site.conf.j2
+    dest: /etc/nginx/sites-available/mijnsite.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Enable Nginx site
+  file:
+    src: /etc/nginx/sites-available/mijnsite.conf
+    dest: /etc/nginx/sites-enabled/mijnsite.conf
+    state: link
+  notify: Reload nginx
+
+- name: Test Nginx config
+  command: nginx -t
+  changed_when: false
+
+- name: Ensure Nginx is enabled and running
+  service:
+    name: nginx
+    state: started
+    enabled: true

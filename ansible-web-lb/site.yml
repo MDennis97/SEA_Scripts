@@ -1,0 +1,12 @@
+---
+- name: Configure webservers
+  hosts: webservers
+  become: true
+  roles:
+    - webserver
+
+- name: Configure load balancer
+  hosts: loadbalancer
+  become: true
+  roles:
+    - loadbalancer

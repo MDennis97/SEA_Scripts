@@ -1,0 +1,32 @@
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    daemon
+
+defaults
+    log global
+    mode http
+    option httplog
+    option dontlognull
+    timeout connect 5s
+    timeout client 50s
+    timeout server 50s
+
+frontend http_frontend
+    bind *:{{ haproxy_frontend_port }}
+    default_backend webservers_backend
+
+backend webservers_backend
+    balance roundrobin
+    option httpchk GET /health
+
+{% for host in groups['webservers'] %}
+    server {{ host }} {{ hostvars[host]['ansible_host'] }}:{{ webserver_port }} check
+{% endfor %}
+
+listen stats
+    bind *:{{ haproxy_stats_port }}
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats auth {{ haproxy_stats_user }}:{{ haproxy_stats_password }}
