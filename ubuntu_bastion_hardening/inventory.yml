@@ -2,6 +2,7 @@ all:
   children:
     bastion_servers:
       hosts:
-        localhost:
-          ansible_connection: local
+        bastion-01:
+          ansible_host: 172.16.1.100
+          ansible_user: icu-01
           ansible_become: true
