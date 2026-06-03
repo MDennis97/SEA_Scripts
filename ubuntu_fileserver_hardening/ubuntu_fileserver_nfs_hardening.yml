@@ -274,11 +274,20 @@
         enabled: true
         state: started
 
-    - name: Ensure auditd is enabled and running
+
+    - name: Ensure auditd package is installed
+      ansible.builtin.apt:
+        name: auditd
+        state: present
+    
+    - name: Ensure auditd service is enabled and running when available
       ansible.builtin.service:
         name: auditd
         enabled: true
         state: started
+      ignore_errors: true
+
+
 
     - name: Ensure fail2ban is enabled and running
       ansible.builtin.service:
