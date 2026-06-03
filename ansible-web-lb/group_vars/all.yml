@@ -1,0 +1,11 @@
+---
+domain_name: mijnsite.nl
+
+web_root: /var/www/mijnsite
+
+webserver_port: 80
+
+haproxy_frontend_port: 80
+haproxy_stats_port: 8404
+haproxy_stats_user: admin
+haproxy_stats_password: sterk-wachtwoord-hier
