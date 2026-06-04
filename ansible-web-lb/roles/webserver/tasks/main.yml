@@ -27,6 +27,20 @@
     group: www-data
     mode: "0644"
 
+- name: Deploy website pages
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ web_root }}/{{ item.dest }}"
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  loop:
+    - { src: "register.html.j2", dest: "register.html" }
+    - { src: "login.html.j2", dest: "login.html" }
+    - { src: "dashboard.html.j2", dest: "dashboard.html" }
+    - { src: "style.css.j2", dest: "style.css" }
+    - { src: "app.js.j2", dest: "app.js" }
+
 - name: Deploy Nginx site config
   template:
     src: nginx-site.conf.j2
