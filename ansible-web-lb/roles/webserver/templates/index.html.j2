@@ -3,9 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ domain_name }}</title>
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <h1>{{ domain_name }}</h1>
-    <p>Deze pagina wordt geserveerd door: {{ inventory_hostname }}</p>
+    <nav>
+        <h2>ICU Webportal</h2>
+        <div>
+            <a href="/">Home</a>
+            <a href="/register.html">Registreren</a>
+            <a href="/login.html">Inloggen</a>
+            <a href="/dashboard.html">Dashboard</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="card">
+            <h1>Welkom bij {{ domain_name }}</h1>
+            <p>Deze website draait achter een HAProxy load balancer.</p>
+            <p>Deze pagina wordt geserveerd door: <strong>{{ inventory_hostname }}</strong></p>
+
+            <div class="buttons">
+                <a class="btn" href="/register.html">Account maken</a>
+                <a class="btn secondary" href="/login.html">Inloggen</a>
+            </div>
+        </section>
+    </main>
 </body>
 </html>
