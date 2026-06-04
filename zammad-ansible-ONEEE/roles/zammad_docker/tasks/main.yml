@@ -1,0 +1,62 @@
+---
+- name: Set vm.max_map_count for Zammad Elasticsearch container
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: "262144"
+    state: present
+    reload: true
+
+- name: Create Zammad Docker directory
+  ansible.builtin.file:
+    path: "{{ zammad_compose_dir }}"
+    state: directory
+    owner: "{{ ansible_user_id | default('icu01') }}"
+    group: "{{ ansible_user_id | default('icu01') }}"
+    mode: "0755"
+
+- name: Clone official Zammad Docker Compose repository
+  ansible.builtin.git:
+    repo: "{{ zammad_docker_repo }}"
+    dest: "{{ zammad_compose_dir }}"
+    version: master
+    force: true
+
+- name: Ensure .env exists
+  ansible.builtin.shell: |
+    cd "{{ zammad_compose_dir }}"
+    if [ -f .env.dist ] && [ ! -f .env ]; then cp .env.dist .env; fi
+    if [ ! -f .env ]; then touch .env; fi
+  args:
+    executable: /bin/bash
+
+- name: Configure Zammad external port
+  ansible.builtin.lineinfile:
+    path: "{{ zammad_compose_dir }}/.env"
+    regexp: "^NGINX_EXPOSE_PORT="
+    line: "NGINX_EXPOSE_PORT={{ zammad_expose_port }}"
+    create: true
+
+- name: Configure timezone
+  ansible.builtin.lineinfile:
+    path: "{{ zammad_compose_dir }}/.env"
+    regexp: "^TZ="
+    line: "TZ={{ timezone }}"
+    create: true
+
+- name: Start Zammad Docker Compose stack
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ zammad_compose_dir }}"
+  register: zammad_up
+  changed_when: true
+
+- name: Allow Zammad port through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ zammad_expose_port }}"
+    proto: tcp
+  failed_when: false
+
+- name: Show Zammad URL
+  ansible.builtin.debug:
+    msg: "Zammad should be available at http://{{ zammad_ip }}:{{ zammad_expose_port }}"

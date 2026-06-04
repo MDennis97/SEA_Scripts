@@ -1,0 +1,29 @@
+groups:
+  - name: soc-siem-alerts
+    rules:
+      - alert: HostDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Host is down"
+          description: "Prometheus target {{ '{{' }} $labels.instance {{ '}}' }} is langer dan 1 minuut down."
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Hoog CPU-gebruik"
+          description: "CPU-gebruik op {{ '{{' }} $labels.instance {{ '}}' }} is hoger dan 85%."
+
+      - alert: LowDiskSpace
+        expr: 100 - ((node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} * 100) / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Weinig vrije schijfruimte"
+          description: "Diskgebruik op {{ '{{' }} $labels.instance {{ '}}' }} is hoger dan 85%."

@@ -1,0 +1,26 @@
+---
+- name: Cleanup old ticketing installation
+  hosts: ticketing
+  become: true
+  roles:
+    - cleanup_ticketing
+
+- name: Deploy Zammad with Docker Compose
+  hosts: ticketing
+  become: true
+  roles:
+    - docker_host
+    - zammad_docker
+
+- name: Deploy Zammad ticket bridge with Docker
+  hosts: ticketing
+  become: true
+  roles:
+    - docker_host
+    - zammad_bridge_docker
+
+- name: Connect SOC/SIEM stack to Zammad bridge
+  hosts: monitoring
+  become: true
+  roles:
+    - monitoring_alertmanager_docker

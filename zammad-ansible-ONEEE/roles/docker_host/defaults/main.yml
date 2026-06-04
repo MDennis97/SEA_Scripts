@@ -1,0 +1,17 @@
+---
+monitoring_ip: "172.16.1.70"
+monitoring_user: "icu01"
+zammad_ip: "172.16.1.71"
+zammad_hostname: "VM-SRV-Ticketing-system"
+timezone: "Europe/Amsterdam"
+cleanup_delete_data: true
+zammad_compose_dir: "/opt/zammad-docker-compose"
+zammad_bridge_dir: "/opt/zammad-ticket-bridge"
+soc_stack_dir: "/opt/soc-siem"
+zammad_docker_repo: "https://github.com/zammad/zammad-docker-compose.git"
+zammad_expose_port: 8080
+zammad_bridge_port: 8081
+zammad_api_token: "GuvenKip025!"
+zammad_group: "Users"
+zammad_customer_email: "soc@example.local"
+alertmanager_port: 9093

@@ -1,0 +1,97 @@
+import os
+import hashlib
+import requests
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+ZAMMAD_URL = os.getenv("ZAMMAD_URL", "http://127.0.0.1:8080").rstrip("/")
+ZAMMAD_API_TOKEN = os.getenv("ZAMMAD_API_TOKEN")
+ZAMMAD_GROUP = os.getenv("ZAMMAD_GROUP", "Users")
+ZAMMAD_CUSTOMER_EMAIL = os.getenv("ZAMMAD_CUSTOMER_EMAIL", "soc@example.local")
+
+if not ZAMMAD_API_TOKEN:
+    raise RuntimeError("ZAMMAD_API_TOKEN is not set")
+
+HEADERS = {
+    "Authorization": f"Token token={ZAMMAD_API_TOKEN}",
+    "Content-Type": "application/json",
+}
+
+def fingerprint(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+def priority_from_severity(severity: str) -> str:
+    severity = (severity or "warning").lower()
+    if severity in ["critical", "high"]:
+        return "3 high"
+    if severity in ["warning", "medium"]:
+        return "2 normal"
+    return "1 low"
+
+def create_zammad_ticket(title: str, body: str, priority: str):
+    payload = {
+        "title": title,
+        "group": ZAMMAD_GROUP,
+        "customer_id": f"guess:{ZAMMAD_CUSTOMER_EMAIL}",
+        "article": {
+            "subject": title,
+            "body": body,
+            "type": "note",
+            "internal": False,
+        },
+        "priority": priority,
+        "state": "new",
+    }
+    response = requests.post(
+        f"{ZAMMAD_URL}/api/v1/tickets",
+        headers=HEADERS,
+        json=payload,
+        timeout=20,
+    )
+    response.raise_for_status()
+    return response.json()
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
+
+@app.route("/webhook/alertmanager", methods=["POST"])
+def alertmanager_webhook():
+    data = request.get_json(force=True)
+    alerts = data.get("alerts", [])
+    created = []
+    for alert in alerts:
+        labels = alert.get("labels", {})
+        annotations = alert.get("annotations", {})
+        status = alert.get("status", "unknown")
+        alertname = labels.get("alertname", "UnknownAlert")
+        instance = labels.get("instance", "unknown-instance")
+        severity = labels.get("severity", "warning")
+        summary = annotations.get("summary", "")
+        description = annotations.get("description", "")
+        fp = fingerprint(f"{alertname}|{instance}|{severity}")
+        title = f"[{severity.upper()}] {alertname} on {instance}"
+        body = f"""Automatisch aangemaakt vanuit SOC/SIEM alerting.
+
+Status: {status}
+Severity: {severity}
+Alert: {alertname}
+Instance: {instance}
+Fingerprint: {fp}
+
+Summary:
+{summary}
+
+Description:
+{description}
+
+Labels:
+{labels}
+
+Annotations:
+{annotations}
+"""
+        ticket = create_zammad_ticket(title, body, priority_from_severity(severity))
+        created.append(ticket.get("id"))
+    return jsonify({"created_ticket_ids": created})

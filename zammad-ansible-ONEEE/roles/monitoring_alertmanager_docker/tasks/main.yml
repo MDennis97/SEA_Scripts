@@ -1,0 +1,71 @@
+---
+- name: Ensure Alertmanager directory exists
+  ansible.builtin.file:
+    path: "{{ soc_stack_dir }}/alertmanager"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure Prometheus rules directory exists
+  ansible.builtin.file:
+    path: "{{ soc_stack_dir }}/prometheus/rules"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy Alertmanager config
+  ansible.builtin.template:
+    src: alertmanager.yml.j2
+    dest: "{{ soc_stack_dir }}/alertmanager/alertmanager.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy SOC alert rules
+  ansible.builtin.template:
+    src: soc-alerts.yml.j2
+    dest: "{{ soc_stack_dir }}/prometheus/rules/soc-alerts.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Insert Alertmanager block into Prometheus config
+  ansible.builtin.blockinfile:
+    path: "{{ soc_stack_dir }}/prometheus/prometheus.yml"
+    marker: "# {mark} ONEBIG ALERTMANAGER"
+    insertbefore: "^scrape_configs:"
+    block: |
+      alerting:
+        alertmanagers:
+          - static_configs:
+              - targets:
+                  - "alertmanager:9093"
+
+      rule_files:
+        - "/etc/prometheus/rules/*.yml"
+
+- name: Deploy Docker Compose Alertmanager override
+  ansible.builtin.template:
+    src: docker-compose.alertmanager.override.yml.j2
+    dest: "{{ soc_stack_dir }}/docker-compose.alertmanager.override.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Start Alertmanager override stack
+  ansible.builtin.command:
+    cmd: docker compose -f docker-compose.yml -f docker-compose.alertmanager.override.yml up -d
+    chdir: "{{ soc_stack_dir }}"
+  changed_when: true
+
+- name: Restart Prometheus
+  ansible.builtin.command:
+    cmd: docker compose restart prometheus
+    chdir: "{{ soc_stack_dir }}"
+  changed_when: true
+
+- name: Show Alertmanager URL
+  ansible.builtin.debug:
+    msg: "Alertmanager should be available at http://{{ monitoring_ip }}:{{ alertmanager_port }}"

@@ -1,0 +1,83 @@
+---
+- name: Stop old package services if present
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - zammad
+    - elasticsearch
+    - nginx
+    - zammad-ticket-bridge
+  failed_when: false
+
+- name: Stop old Docker Compose Zammad stack if present
+  ansible.builtin.shell: |
+    if [ -d "{{ zammad_compose_dir }}" ]; then
+      cd "{{ zammad_compose_dir }}"
+      if command -v docker >/dev/null 2>&1; then
+        docker compose down -v || true
+      fi
+    fi
+  changed_when: false
+  failed_when: false
+
+- name: Stop old Docker Compose bridge stack if present
+  ansible.builtin.shell: |
+    if [ -d "{{ zammad_bridge_dir }}" ]; then
+      cd "{{ zammad_bridge_dir }}"
+      if command -v docker >/dev/null 2>&1; then
+        docker compose down -v || true
+      fi
+    fi
+  changed_when: false
+  failed_when: false
+
+- name: Remove old systemd bridge service file
+  ansible.builtin.file:
+    path: /etc/systemd/system/zammad-ticket-bridge.service
+    state: absent
+
+- name: Reload systemd after cleanup
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Purge old package installations
+  ansible.builtin.apt:
+    name:
+      - zammad
+      - elasticsearch
+    state: absent
+    purge: true
+    autoremove: true
+  failed_when: false
+
+- name: Remove old apt source/config files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/zammad.list
+    - /etc/apt/sources.list.d/elastic-8.x.list
+    - /etc/apt/keyrings/elasticsearch.gpg
+    - /etc/apt/keyrings/zammad.gpg
+    - /etc/nginx/sites-enabled/zammad.conf
+    - /etc/nginx/sites-available/zammad.conf
+  failed_when: false
+
+- name: Delete old data/config directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /opt/zammad
+    - "{{ zammad_compose_dir }}"
+    - "{{ zammad_bridge_dir }}"
+    - /var/lib/elasticsearch
+    - /etc/elasticsearch
+    - /var/log/elasticsearch
+  when: cleanup_delete_data | bool
+
+- name: Update apt cache after cleanup
+  ansible.builtin.apt:
+    update_cache: true
