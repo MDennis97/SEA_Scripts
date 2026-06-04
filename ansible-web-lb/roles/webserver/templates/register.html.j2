@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Registreren - {{ domain_name }}</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <nav>
+        <h2>ICU Webportal</h2>
+        <div>
+            <a href="/">Home</a>
+            <a href="/login.html">Inloggen</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="card">
+            <h1>Registreren</h1>
+
+            <form id="registerForm">
+                <label>Naam</label>
+                <input type="text" id="name" required>
+
+                <label>E-mailadres</label>
+                <input type="email" id="email" required>
+
+                <label>Wachtwoord</label>
+                <input type="password" id="password" required>
+
+                <button type="submit" class="btn">Account aanmaken</button>
+            </form>
+
+            <p id="message"></p>
+            <p>Heb je al een account? <a href="/login.html">Log hier in</a></p>
+        </section>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>
