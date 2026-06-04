@@ -1,0 +1,87 @@
+document.addEventListener("DOMContentLoaded", function () {
+    const registerForm = document.getElementById("registerForm");
+    const loginForm = document.getElementById("loginForm");
+    const welcomeText = document.getElementById("welcomeText");
+
+    if (registerForm) {
+        registerForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const name = document.getElementById("name").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            const users = JSON.parse(localStorage.getItem("users")) || [];
+
+            const userExists = users.some(user => user.email === email);
+
+            if (userExists) {
+                showMessage("Dit e-mailadres is al geregistreerd.", "error");
+                return;
+            }
+
+            users.push({
+                name: name,
+                email: email,
+                password: password
+            });
+
+            localStorage.setItem("users", JSON.stringify(users));
+
+            showMessage("Account aangemaakt. Je kunt nu inloggen.", "success");
+
+            setTimeout(function () {
+                window.location.href = "/login.html";
+            }, 1500);
+        });
+    }
+
+    if (loginForm) {
+        loginForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            const users = JSON.parse(localStorage.getItem("users")) || [];
+
+            const user = users.find(user => user.email === email && user.password === password);
+
+            if (!user) {
+                showMessage("Ongeldige login gegevens.", "error");
+                return;
+            }
+
+            localStorage.setItem("loggedInUser", JSON.stringify(user));
+
+            window.location.href = "/dashboard.html";
+        });
+    }
+
+    if (welcomeText) {
+        const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
+
+        if (!loggedInUser) {
+            window.location.href = "/login.html";
+            return;
+        }
+
+        welcomeText.textContent = "Welkom, " + loggedInUser.name + ".";
+    }
+});
+
+function showMessage(message, type) {
+    const messageElement = document.getElementById("message");
+
+    if (!messageElement) {
+        return;
+    }
+
+    messageElement.textContent = message;
+    messageElement.className = type;
+}
+
+function logout() {
+    localStorage.removeItem("loggedInUser");
+    window.location.href = "/login.html";
+}
