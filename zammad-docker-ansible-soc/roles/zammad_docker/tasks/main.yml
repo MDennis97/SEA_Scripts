@@ -1,0 +1,63 @@
+---
+- name: Set vm.max_map_count for Zammad Elasticsearch container
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: "262144"
+    state: present
+    reload: true
+
+- name: Create Zammad Docker directory
+  ansible.builtin.file:
+    path: "{{ zammad_compose_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Clone official Zammad Docker Compose repository
+  ansible.builtin.git:
+    repo: "{{ zammad_docker_repo }}"
+    dest: "{{ zammad_compose_dir }}"
+    version: master
+    force: true
+
+- name: Ensure .env exists from example if available
+  ansible.builtin.shell: |
+    set -e
+    cd {{ zammad_compose_dir }}
+    if [ -f .env.dist ] && [ ! -f .env ]; then cp .env.dist .env; fi
+    if [ ! -f .env ]; then touch .env; fi
+  args:
+    executable: /bin/bash
+
+- name: Configure Zammad external Nginx port
+  ansible.builtin.lineinfile:
+    path: "{{ zammad_compose_dir }}/.env"
+    regexp: "^NGINX_EXPOSE_PORT="
+    line: "NGINX_EXPOSE_PORT={{ zammad_expose_port }}"
+    create: true
+
+- name: Configure Zammad timezone
+  ansible.builtin.lineinfile:
+    path: "{{ zammad_compose_dir }}/.env"
+    regexp: "^TZ="
+    line: "TZ={{ timezone }}"
+    create: true
+
+- name: Start Zammad Docker Compose stack
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ zammad_compose_dir }}"
+  register: zammad_up
+  changed_when: "'Started' in zammad_up.stdout or 'Created' in zammad_up.stdout or 'Recreated' in zammad_up.stdout"
+
+- name: Allow Zammad HTTP port
+  community.general.ufw:
+    rule: allow
+    port: "{{ zammad_expose_port }}"
+    proto: tcp
+  failed_when: false
+
+- name: Print Zammad URL
+  ansible.builtin.debug:
+    msg: "Open Zammad at http://{{ zammad_ip }}:{{ zammad_expose_port }} and finish setup. Then create API token and run playbooks/02-deploy-bridge-docker.yml."

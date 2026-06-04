@@ -1,0 +1,9 @@
+services:
+  zammad-ticket-bridge:
+    build: .
+    container_name: zammad-ticket-bridge
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "{{ zammad_bridge_port }}:8081"

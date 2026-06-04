@@ -1,0 +1,92 @@
+---
+- name: Fail if Zammad API token is missing
+  ansible.builtin.fail:
+    msg: "Set zammad_api_token in group_vars/all.yml after creating the token in Zammad."
+  when: zammad_api_token == "PLAK_HIER_JE_ZAMMAD_API_TOKEN" or zammad_api_token | length < 10
+
+- name: Create bridge directory
+  ansible.builtin.file:
+    path: "{{ zammad_bridge_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Deploy bridge app
+  ansible.builtin.template:
+    src: app.py.j2
+    dest: "{{ zammad_bridge_dir }}/app.py"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+- name: Deploy bridge requirements
+  ansible.builtin.copy:
+    dest: "{{ zammad_bridge_dir }}/requirements.txt"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+    content: |
+      flask==3.0.3
+      requests==2.32.3
+      gunicorn==22.0.0
+
+- name: Deploy bridge Dockerfile
+  ansible.builtin.copy:
+    dest: "{{ zammad_bridge_dir }}/Dockerfile"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+    content: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      COPY app.py .
+      EXPOSE 8081
+      CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8081", "app:app"]
+
+- name: Deploy bridge environment file
+  ansible.builtin.template:
+    src: bridge.env.j2
+    dest: "{{ zammad_bridge_dir }}/.env"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+
+- name: Deploy bridge Docker Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ zammad_bridge_dir }}/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+- name: Start bridge Docker Compose stack
+  ansible.builtin.command:
+    cmd: docker compose up -d --build
+    chdir: "{{ zammad_bridge_dir }}"
+  register: bridge_up
+  changed_when: "'Started' in bridge_up.stdout or 'Created' in bridge_up.stdout or 'Recreated' in bridge_up.stdout or 'Building' in bridge_up.stdout"
+
+- name: Allow bridge port only from monitoring server
+  community.general.ufw:
+    rule: allow
+    from_ip: "{{ monitoring_ip }}"
+    port: "{{ zammad_bridge_port }}"
+    proto: tcp
+  failed_when: false
+
+- name: Wait for bridge health
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ zammad_bridge_port }}/health"
+    method: GET
+    status_code: 200
+  register: bridge_health
+  retries: 15
+  delay: 3
+  until: bridge_health.status == 200
+
+- name: Print bridge URL
+  ansible.builtin.debug:
+    msg: "Bridge ready at http://{{ zammad_ip }}:{{ zammad_bridge_port }}/webhook/alertmanager"

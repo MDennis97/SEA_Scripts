@@ -1,0 +1,7 @@
+---
+- name: Deploy Zammad ticket bridge with Docker
+  hosts: ticketing
+  become: true
+  roles:
+    - docker_host
+    - zammad_bridge_docker

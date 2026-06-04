@@ -1,0 +1,8 @@
+[ticketing]
+vm-srv-ticketing ansible_host=172.16.1.71 ansible_user=icu01
+
+[monitoring]
+vm-srv-monitoring ansible_host=172.16.1.70 ansible_user=icu01
+
+[all:vars]
+ansible_become=true
