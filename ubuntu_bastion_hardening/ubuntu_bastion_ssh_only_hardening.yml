@@ -6,20 +6,21 @@
   vars:
     ssh_port: 22
     allowed_ssh_networks:
-      - "172.16.0.0/26"
-      - "172.16.0.64/27"
-      - "172.16.0.96/27"
-      - "172.16.0.128/27"
-      - "172.16.0.160/27"
-      - "172.16.1.0/27"
-      - "172.16.1.32/27"
-      - "172.16.1.64/27"
-      - "172.16.1.96/27"
-      - "172.16.1.128/27"
-      - "172.16.1.160/28"
-      - "10.2.128.0/29"
-      - "10.2.128.8/29"
-
+      # Interne services
+      - "172.16.0.0/26"      # Gastennetwerk
+      - "172.16.0.64/27"     # Intern Observability
+      - "172.16.0.96/27"     # Werkplekken intern
+      - "172.16.0.128/27"    # Security
+      - "172.16.0.160/27"    # Management
+    
+      # Datacenter servers
+      - "172.16.1.0/27"      # DMZ Intern
+      - "172.16.1.32/27"     # Network Servers
+      - "172.16.1.64/27"     # Observability
+      - "172.16.1.96/27"     # Internal Access
+      - "172.16.1.128/27"    # Identity and Access Management
+      - "172.16.1.160/28"    # DMZ Extern/publiek
+      
     packages_to_install:
       - ufw
       - fail2ban
