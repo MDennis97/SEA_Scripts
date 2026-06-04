@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - {{ domain_name }}</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <nav>
+        <h2>ICU Webportal</h2>
+        <div>
+            <a href="/">Home</a>
+            <button onclick="logout()" class="logout-btn">Uitloggen</button>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="card">
+            <h1>Dashboard</h1>
+            <p id="welcomeText">Welkom.</p>
+            <p>Je bent succesvol ingelogd.</p>
+
+            <hr>
+
+            <p><strong>Server:</strong> {{ inventory_hostname }}</p>
+            <p><strong>Status:</strong> Website werkt via load balancing.</p>
+        </section>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>
