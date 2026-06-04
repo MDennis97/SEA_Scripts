@@ -7,7 +7,7 @@ timezone: "Europe/Amsterdam"
 cleanup_delete_data: true
 zammad_compose_dir: "/opt/zammad-docker-compose"
 zammad_bridge_dir: "/opt/zammad-ticket-bridge"
-soc_stack_dir: "/opt/soc-siem"
+soc_stack_dir: "/home/icu01/automation/SEA_Scripts/soc-siem-local"
 zammad_docker_repo: "https://github.com/zammad/zammad-docker-compose.git"
 zammad_expose_port: 8080
 zammad_bridge_port: 8081
