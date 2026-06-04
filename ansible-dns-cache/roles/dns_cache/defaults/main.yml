@@ -1,0 +1,4 @@
+---
+unbound_package: unbound
+unbound_service: unbound
+unbound_config_file: /etc/unbound/unbound.conf.d/cache.conf

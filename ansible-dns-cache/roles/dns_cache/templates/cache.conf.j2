@@ -1,0 +1,42 @@
+server:
+{% for interface in dns_listen_interfaces %}
+    interface: {{ interface }}
+{% endfor %}
+    port: 53
+
+    do-ip4: yes
+    do-ip6: yes
+    do-udp: yes
+    do-tcp: yes
+
+{% for network in dns_allowed_networks %}
+    access-control: {{ network }} allow
+{% endfor %}
+
+    cache-max-ttl: {{ unbound_cache_max_ttl }}
+    cache-min-ttl: {{ unbound_cache_min_ttl }}
+    prefetch: yes
+
+    hide-identity: yes
+    hide-version: yes
+    harden-glue: yes
+    harden-dnssec-stripped: yes
+    use-caps-for-id: yes
+
+    verbosity: 1
+
+{% for zone in internal_dns_zones %}
+forward-zone:
+    name: "{{ zone.name }}"
+{% for forwarder in zone.forwarders %}
+    forward-addr: {{ forwarder }}
+{% endfor %}
+
+{% endfor %}
+{% if public_forwarders | length > 0 %}
+forward-zone:
+    name: "."
+{% for forwarder in public_forwarders %}
+    forward-addr: {{ forwarder }}
+{% endfor %}
+{% endif %}

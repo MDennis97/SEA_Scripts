@@ -1,0 +1,45 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install Unbound
+  ansible.builtin.apt:
+    name: "{{ unbound_package }}"
+    state: present
+
+- name: Deploy Unbound cache configuration
+  ansible.builtin.template:
+    src: cache.conf.j2
+    dest: "{{ unbound_config_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart unbound
+
+- name: Check Unbound configuration
+  ansible.builtin.command: unbound-checkconf
+  changed_when: false
+
+- name: Enable and start Unbound
+  ansible.builtin.service:
+    name: "{{ unbound_service }}"
+    enabled: true
+    state: started
+
+- name: Allow DNS UDP with UFW when installed
+  community.general.ufw:
+    rule: allow
+    port: "53"
+    proto: udp
+  when: ansible_facts.packages.ufw is defined
+  ignore_errors: true
+
+- name: Allow DNS TCP with UFW when installed
+  community.general.ufw:
+    rule: allow
+    port: "53"
+    proto: tcp
+  when: ansible_facts.packages.ufw is defined
+  ignore_errors: true

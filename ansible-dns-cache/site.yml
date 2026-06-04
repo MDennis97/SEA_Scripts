@@ -1,0 +1,6 @@
+---
+- name: Configure DNS caching server with Unbound
+  hosts: dns_cache
+  become: true
+  roles:
+    - dns_cache

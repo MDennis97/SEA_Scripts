@@ -1,0 +1,27 @@
+---
+# Netwerken die deze DNS caching server mogen gebruiken.
+# Jullie SEA-omgeving gebruikt 172.16.0.0/23 voor meerdere interne VLAN's.
+dns_allowed_networks:
+  - "172.16.0.0/23"
+
+# Interface waarop Unbound luistert.
+dns_listen_interfaces:
+  - "0.0.0.0"
+  - "::0"
+
+# Interne DNS-zone en bestaande interne DNS-server.
+# Pas dit aan naar jullie echte interne domein.
+internal_dns_zones:
+  - name: "icu-01.local."
+    forwarders:
+      - "172.16.1.34"
+      - "172.16.1.35"
+
+# Publieke forwarders voor internet-domeinen.
+# Je kunt dit leeg laten als Unbound zelf recursive moet resolven.
+public_forwarders:
+  - "1.1.1.1"
+  - "9.9.9.9"
+
+unbound_cache_max_ttl: 86400
+unbound_cache_min_ttl: 3600
