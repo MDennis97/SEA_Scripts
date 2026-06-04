@@ -1,0 +1,6 @@
+---
+- name: Connect SOC/SIEM stack to Zammad bridge
+  hosts: monitoring
+  become: true
+  roles:
+    - monitoring_alertmanager_docker

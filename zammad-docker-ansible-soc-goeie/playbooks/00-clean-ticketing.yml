@@ -1,0 +1,6 @@
+---
+- name: Remove old manual Zammad/Elasticsearch installation
+  hosts: ticketing
+  become: true
+  roles:
+    - cleanup_ticketing

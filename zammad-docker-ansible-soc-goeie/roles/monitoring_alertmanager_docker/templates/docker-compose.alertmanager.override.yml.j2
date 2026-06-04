@@ -1,0 +1,16 @@
+services:
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: local-alertmanager
+    restart: unless-stopped
+    ports:
+      - "{{ alertmanager_port }}:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+
+  prometheus:
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro

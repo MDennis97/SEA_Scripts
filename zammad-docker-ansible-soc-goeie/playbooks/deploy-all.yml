@@ -1,0 +1,7 @@
+---
+- import_playbook: 00-clean-ticketing.yml
+- import_playbook: 01-deploy-zammad-docker.yml
+# Maak eerst Zammad setup af en zet daarna zammad_api_token in group_vars/all.yml.
+# Daarna kun je de onderstaande playbooks draaien:
+# - import_playbook: 02-deploy-bridge-docker.yml
+# - import_playbook: 03-deploy-alertmanager-integration.yml
