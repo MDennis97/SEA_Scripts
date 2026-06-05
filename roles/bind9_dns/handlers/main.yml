@@ -1,3 +1,62 @@
+
+---
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - gnupg
+      - apt-transport-https
+    state: present
+    update_cache: yes
+
+- name: Add Wazuh GPG key
+  shell: |
+    curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor -o /usr/share/keyrings/wazuh.gpg
+  args:
+    creates: /usr/share/keyrings/wazuh.gpg
+
+- name: Add Wazuh repository
+  copy:
+    dest: /etc/apt/sources.list.d/wazuh.list
+    content: |
+      deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install Wazuh agent
+  apt:
+    name: wazuh-agent
+    state: present
+
+- name: Configure Wazuh manager IP
+  replace:
+    path: /var/ossec/etc/ossec.conf
+    regexp: '<address>.*</address>'
+    replace: '<address>{{ wazuh_manager_ip }}</address>'
+
+- name: Enable Wazuh agent
+  systemd:
+    name: wazuh-agent
+    enabled: yes
+
+- name: Restart Wazuh agent
+  systemd:
+    name: wazuh-agent
+    state: restarted
+
+- name: Verify Wazuh agent status
+  command: systemctl is-active wazuh-agent
+  register: wazuh_status
+  changed_when: false
+
+- name: Display Wazuh status
+  debug:
+    msg: "Wazuh agent status on {{ inventory_hostname }}: {{ wazuh_status.stdout }}"
+
+
+
 ---
 - name: Restart BIND9
   ansible.builtin.systemd:
