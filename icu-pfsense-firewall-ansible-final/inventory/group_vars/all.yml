@@ -1,0 +1,156 @@
+---
+# ============================================================
+# ICU-01 pfSense firewall automation
+# Gebaseerd op Technisch Ontwerp + beide pfSense consoles
+# ============================================================
+
+# Interface mapping is op beide firewalls gelijk
+pfsense_if_wan: "wan"
+pfsense_if_dmz_intern: "opt1"          # VLAN 424
+pfsense_if_network_servers: "opt2"     # VLAN 425
+pfsense_if_observability: "opt3"       # VLAN 426
+pfsense_if_internal_access: "opt4"     # VLAN 427
+pfsense_if_iam: "opt5"                 # VLAN 428
+pfsense_if_dmz_extern: "opt6"          # VLAN 429
+
+# ============================================================
+# Netwerken uit Technisch Ontwerp
+# ============================================================
+
+net_gasten: "172.16.0.0/26"
+net_intern_observability: "172.16.0.64/27"
+net_werkplekken: "172.16.0.96/27"
+net_security: "172.16.0.128/27"
+net_management: "172.16.0.160/27"
+
+net_dmz_intern: "172.16.1.0/27"
+net_network_servers: "172.16.1.32/27"
+net_observability: "172.16.1.64/27"
+net_internal_access: "172.16.1.96/27"
+net_iam: "172.16.1.128/27"
+net_dmz_extern: "172.16.1.160/28"
+
+net_all_internal: "172.16.0.0/16"
+
+# IPsec netwerken
+net_ipsec_arnhem: "10.2.128.0/29"
+net_ipsec_klant: "10.2.128.8/29"
+
+# ============================================================
+# Firewall interface IP's
+# ============================================================
+
+pfsense01_wan: "10.2.66.2"
+pfsense02_wan: "10.2.66.4"
+
+pfsense01_dmz_intern: "172.16.1.1"
+pfsense02_dmz_intern: "172.16.1.2"
+
+pfsense01_network_servers: "172.16.1.33"
+pfsense02_network_servers: "172.16.1.34"
+
+pfsense01_observability: "172.16.1.65"
+pfsense02_observability: "172.16.1.66"
+
+pfsense01_internal_access: "172.16.1.97"
+pfsense02_internal_access: "172.16.1.98"
+
+pfsense01_iam: "172.16.1.129"
+pfsense02_iam: "172.16.1.130"
+
+pfsense01_dmz_extern: "172.16.1.161"
+pfsense02_dmz_extern: "172.16.1.173"
+
+# ============================================================
+# DMZ Extern / publieke services volgens TO
+# ============================================================
+
+reverse_proxy_1: "10.22.66.2"
+reverse_proxy_2: "10.22.66.3"
+webserver_1: "10.22.66.4"
+webserver_2: "10.22.66.5"
+public_dns_1: "10.22.66.6"
+public_dns_2: "10.22.66.7"
+
+# ============================================================
+# DMZ Intern - VLAN 424
+# ============================================================
+
+database_1: "172.16.1.6"
+database_2: "172.16.1.3"
+fileserver_1: "172.16.1.4"
+fileserver_2: "172.16.1.5"
+fileserver_vrp: "172.16.1.7"
+ca_dmz: "172.16.1.6"
+
+# ============================================================
+# Network Servers - VLAN 425
+# ============================================================
+
+dns_server_1: "172.16.1.35"
+dns_server_2: "172.16.1.44"
+
+dhcp_server_1: "172.16.1.36"
+dhcp_server_2: "172.16.1.37"
+
+ntp_server_1: "172.16.1.38"
+ntp_server_2: "172.16.1.39"
+
+root_ca_1: "172.16.1.40"
+root_ca_2: "172.16.1.41"
+issuing_ca_1: "172.16.1.42"
+issuing_ca_2: "172.16.1.43"
+
+# ============================================================
+# Observability - VLAN 426
+# ============================================================
+
+monitoring_1: "172.16.1.66"
+monitoring_2: "172.16.1.67"
+wazuh_1: "172.16.1.68"
+wazuh_2: "172.16.1.69"
+ticketing_server: "172.16.1.70"
+
+# ============================================================
+# Internal Access - VLAN 427
+# ============================================================
+
+vpn_1: "172.16.1.98"
+vpn_2: "172.16.1.99"
+
+bastion_1: "172.16.1.100"
+bastion_2: "172.16.1.101"
+
+soc_workstation_1: "172.16.1.103"
+soc_workstation_2: "172.16.1.104"
+
+# ============================================================
+# IAM - VLAN 428
+# ============================================================
+
+ldap_1: "172.16.1.130"
+ldap_2: "172.16.1.131"
+
+keycloak_1: "172.16.1.132"
+keycloak_2: "172.16.1.133"
+identity_vip: "172.16.1.134"
+
+# ============================================================
+# Poorten
+# ============================================================
+
+ports_web: "80,443"
+ports_dns: "53"
+ports_ntp: "123"
+ports_ssh: "22"
+
+ports_monitoring: "3000,9090,9093"
+ports_observability_stack: "3000,9090,9093,3100,3200,9200,55000"
+
+ports_wazuh_agent: "1514,1515"
+ports_wazuh_api: "55000"
+
+ports_ticketing: "8080,8081"
+ports_keycloak: "8080"
+ports_ldap: "389,636"
+ports_ipsec: "500,4500"
