@@ -1,0 +1,69 @@
+ip access-list extended ACL_VLAN10_GASTEN_IN
+ remark VLAN10 gasten: DNS en web, geen intern verkeer
+ permit udp {{ net_gasten }} 0.0.0.31 host {{ dns_server }} eq 53
+ permit tcp {{ net_gasten }} 0.0.0.31 host {{ dns_server }} eq 53
+ permit tcp {{ net_gasten }} 0.0.0.31 any eq 80
+ permit tcp {{ net_gasten }} 0.0.0.31 any eq 443
+ deny ip {{ net_gasten }} 0.0.0.31 172.16.0.0 0.0.255.255 log
+ permit ip {{ net_gasten }} 0.0.0.31 any
+!
+ip access-list extended ACL_VLAN20_OBSERVABILITY_IN
+ remark VLAN20 observability: alleen SOC, Zammad, Keycloak en internet updates
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ soc_server }} eq 3000
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ soc_server }} eq 9090
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ soc_server }} eq 9093
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ soc_server }} eq 3100
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ soc_server }} eq 3200
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ soc_server }} eq 9200
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ soc_server }} eq 55000
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ ticketing_server }} eq 8080
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ ticketing_server }} eq 8081
+ permit tcp {{ net_observability }} 0.0.0.31 host {{ identity_vip }} eq 8080
+ permit tcp {{ net_observability }} 0.0.0.31 any eq 80
+ permit tcp {{ net_observability }} 0.0.0.31 any eq 443
+ deny ip {{ net_observability }} 0.0.0.31 {{ net_management }} 0.0.0.31 log
+ deny ip {{ net_observability }} 0.0.0.31 {{ net_werkplekken }} 0.0.0.31 log
+ permit ip {{ net_observability }} 0.0.0.31 any
+!
+ip access-list extended ACL_VLAN30_WERKPLEKKEN_IN
+ remark VLAN30 werkplekken: dashboards, ticketing, SSO, DNS en internet
+ permit tcp {{ net_werkplekken }} 0.0.0.31 host {{ soc_server }} eq 3000
+ permit tcp {{ net_werkplekken }} 0.0.0.31 host {{ ticketing_server }} eq 8080
+ permit tcp {{ net_werkplekken }} 0.0.0.31 host {{ identity_vip }} eq 8080
+ permit udp {{ net_werkplekken }} 0.0.0.31 host {{ dns_server }} eq 53
+ permit tcp {{ net_werkplekken }} 0.0.0.31 host {{ dns_server }} eq 53
+ permit tcp {{ net_werkplekken }} 0.0.0.31 any eq 80
+ permit tcp {{ net_werkplekken }} 0.0.0.31 any eq 443
+ deny ip {{ net_werkplekken }} 0.0.0.31 {{ net_management }} 0.0.0.31 log
+ deny ip {{ net_werkplekken }} 0.0.0.31 {{ net_observability }} 0.0.0.31 log
+ deny ip {{ net_werkplekken }} 0.0.0.31 {{ net_security }} 0.0.0.31 log
+ permit ip {{ net_werkplekken }} 0.0.0.31 any
+!
+ip access-list extended ACL_VLAN40_SECURITY_IN
+ remark VLAN40 security: SOC, Wazuh, Zammad, Keycloak en updates
+ permit tcp {{ net_security }} 0.0.0.31 host {{ soc_server }} eq 1514
+ permit tcp {{ net_security }} 0.0.0.31 host {{ soc_server }} eq 1515
+ permit tcp {{ net_security }} 0.0.0.31 host {{ soc_server }} eq 3000
+ permit tcp {{ net_security }} 0.0.0.31 host {{ soc_server }} eq 55000
+ permit tcp {{ net_security }} 0.0.0.31 host {{ soc_server }} eq 9200
+ permit tcp {{ net_security }} 0.0.0.31 host {{ ticketing_server }} eq 8080
+ permit tcp {{ net_security }} 0.0.0.31 host {{ ticketing_server }} eq 8081
+ permit tcp {{ net_security }} 0.0.0.31 host {{ identity_vip }} eq 8080
+ permit tcp {{ net_security }} 0.0.0.31 any eq 80
+ permit tcp {{ net_security }} 0.0.0.31 any eq 443
+ deny ip {{ net_security }} 0.0.0.31 {{ net_management }} 0.0.0.31 log
+ deny ip {{ net_security }} 0.0.0.31 {{ net_werkplekken }} 0.0.0.31 log
+ permit ip {{ net_security }} 0.0.0.31 any
+!
+interface {{ cisco_if_vlan10 }}
+ ip access-group ACL_VLAN10_GASTEN_IN in
+!
+interface {{ cisco_if_vlan20 }}
+ ip access-group ACL_VLAN20_OBSERVABILITY_IN in
+!
+interface {{ cisco_if_vlan30 }}
+ ip access-group ACL_VLAN30_WERKPLEKKEN_IN in
+!
+interface {{ cisco_if_vlan40 }}
+ ip access-group ACL_VLAN40_SECURITY_IN in
+!

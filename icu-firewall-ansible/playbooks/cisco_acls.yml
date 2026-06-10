@@ -1,0 +1,16 @@
+---
+- name: Configureer Cisco ACL's ICU
+  hosts: cisco
+  gather_facts: false
+
+  tasks:
+    - name: Render Cisco ACL configuratie lokaal
+      ansible.builtin.template:
+        src: ../templates/cisco_acl.j2
+        dest: /tmp/icu_cisco_acl.cfg
+      delegate_to: localhost
+
+    - name: Push Cisco ACL configuratie
+      cisco.ios.ios_config:
+        src: /tmp/icu_cisco_acl.cfg
+        save_when: modified

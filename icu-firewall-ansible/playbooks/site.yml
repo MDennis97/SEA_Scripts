@@ -1,0 +1,3 @@
+---
+- import_playbook: pfsense_firewall.yml
+- import_playbook: cisco_acls.yml

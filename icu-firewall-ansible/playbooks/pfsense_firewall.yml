@@ -1,0 +1,388 @@
+---
+- name: Configureer pfSense firewallregels ICU
+  hosts: pfsense
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Maak netwerk aliases aan
+      pfsensible.core.pfsense_alias:
+        name: "{{ item.name }}"
+        type: network
+        address: "{{ item.address }}"
+        descr: "{{ item.descr }}"
+        state: present
+      loop:
+        - { name: NET_GASTEN, address: "{{ net_gasten }}", descr: "VLAN 10 Gasten" }
+        - { name: NET_OBSERVABILITY, address: "{{ net_observability }}", descr: "VLAN 20 Observability" }
+        - { name: NET_WERKPLEKKEN, address: "{{ net_werkplekken }}", descr: "VLAN 30 Werkplekken" }
+        - { name: NET_SECURITY, address: "{{ net_security }}", descr: "VLAN 40 Security" }
+        - { name: NET_MANAGEMENT, address: "{{ net_management }}", descr: "VLAN 99 Management" }
+        - { name: NET_SERVICES, address: "{{ net_services }}", descr: "Service/servernetwerk" }
+
+    - name: Maak host aliases aan
+      pfsensible.core.pfsense_alias:
+        name: "{{ item.name }}"
+        type: host
+        address: "{{ item.address }}"
+        descr: "{{ item.descr }}"
+        state: present
+      loop:
+        - { name: SOC_SERVER, address: "{{ soc_server }}", descr: "SOC SIEM monitoringserver" }
+        - { name: TICKETING_SERVER, address: "{{ ticketing_server }}", descr: "Zammad ticketingserver" }
+        - { name: IDENTITY_1, address: "{{ identity_1 }}", descr: "Identity node 1" }
+        - { name: IDENTITY_2, address: "{{ identity_2 }}", descr: "Identity node 2" }
+        - { name: IDENTITY_VIP, address: "{{ identity_vip }}", descr: "Keycloak IAM VIP" }
+        - { name: DNS_SERVER, address: "{{ dns_server }}", descr: "Interne DNS of pfSense DNS" }
+
+    - name: Maak poort aliases aan
+      pfsensible.core.pfsense_alias:
+        name: "{{ item.name }}"
+        type: port
+        address: "{{ item.address }}"
+        descr: "{{ item.descr }}"
+        state: present
+      loop:
+        - { name: PORT_WEB, address: "80 443", descr: "HTTP HTTPS" }
+        - { name: PORT_DNS, address: "53", descr: "DNS" }
+        - { name: PORT_SOC_DASHBOARDS, address: "3000 9090 9093 3100 3200 9200 55000", descr: "Grafana Prometheus Alertmanager Loki Tempo Elasticsearch Wazuh API" }
+        - { name: PORT_ZAMMAD, address: "8080 8081", descr: "Zammad en ticket bridge" }
+        - { name: PORT_KEYCLOAK, address: "8080", descr: "Keycloak HTTP labpoort" }
+        - { name: PORT_WAZUH_AGENT, address: "1514 1515", descr: "Wazuh agent en enrollment" }
+
+    # VLAN 10 GASTEN
+    - name: VLAN10 - Gasten mogen DNS gebruiken
+      pfsensible.core.pfsense_rule:
+        name: "VLAN10 allow DNS"
+        interface: "{{ pfsense_if_gasten }}"
+        action: pass
+        protocol: any
+        source: NET_GASTEN
+        destination: DNS_SERVER
+        destination_port: PORT_DNS
+        descr: "Gasten mogen interne DNS gebruiken"
+        state: present
+
+    - name: VLAN10 - Gasten mogen web naar internet
+      pfsensible.core.pfsense_rule:
+        name: "VLAN10 allow web internet"
+        interface: "{{ pfsense_if_gasten }}"
+        action: pass
+        protocol: tcp
+        source: NET_GASTEN
+        destination: any
+        destination_port: PORT_WEB
+        descr: "Gasten mogen alleen HTTP/HTTPS naar buiten"
+        state: present
+
+    - name: VLAN10 - Blokkeer toegang naar interne netwerken
+      pfsensible.core.pfsense_rule:
+        name: "VLAN10 block internal"
+        interface: "{{ pfsense_if_gasten }}"
+        action: block
+        protocol: any
+        source: NET_GASTEN
+        destination: "{{ item }}"
+        descr: "Gasten niet naar {{ item }}"
+        log: true
+        state: present
+      loop:
+        - NET_OBSERVABILITY
+        - NET_WERKPLEKKEN
+        - NET_SECURITY
+        - NET_MANAGEMENT
+        - NET_SERVICES
+
+    # VLAN 20 OBSERVABILITY
+    - name: VLAN20 - Observability naar SOC stack
+      pfsensible.core.pfsense_rule:
+        name: "VLAN20 allow SOC stack"
+        interface: "{{ pfsense_if_observability }}"
+        action: pass
+        protocol: tcp
+        source: NET_OBSERVABILITY
+        destination: SOC_SERVER
+        destination_port: PORT_SOC_DASHBOARDS
+        descr: "Observability naar Grafana Prometheus Loki Tempo Elasticsearch Wazuh API"
+        state: present
+
+    - name: VLAN20 - Observability naar Zammad
+      pfsensible.core.pfsense_rule:
+        name: "VLAN20 allow Zammad"
+        interface: "{{ pfsense_if_observability }}"
+        action: pass
+        protocol: tcp
+        source: NET_OBSERVABILITY
+        destination: TICKETING_SERVER
+        destination_port: PORT_ZAMMAD
+        descr: "Observability naar ticketing en ticket bridge"
+        state: present
+
+    - name: VLAN20 - Observability naar Keycloak
+      pfsensible.core.pfsense_rule:
+        name: "VLAN20 allow Keycloak"
+        interface: "{{ pfsense_if_observability }}"
+        action: pass
+        protocol: tcp
+        source: NET_OBSERVABILITY
+        destination: IDENTITY_VIP
+        destination_port: PORT_KEYCLOAK
+        descr: "Observability naar SSO"
+        state: present
+
+    - name: VLAN20 - Observability updates internet
+      pfsensible.core.pfsense_rule:
+        name: "VLAN20 allow web internet"
+        interface: "{{ pfsense_if_observability }}"
+        action: pass
+        protocol: tcp
+        source: NET_OBSERVABILITY
+        destination: any
+        destination_port: PORT_WEB
+        descr: "Observability updates en feeds"
+        state: present
+
+    - name: VLAN20 - Blokkeer ongewenste interne toegang
+      pfsensible.core.pfsense_rule:
+        name: "VLAN20 block {{ item }}"
+        interface: "{{ pfsense_if_observability }}"
+        action: block
+        protocol: any
+        source: NET_OBSERVABILITY
+        destination: "{{ item }}"
+        descr: "Observability niet naar {{ item }}"
+        log: true
+        state: present
+      loop:
+        - NET_GASTEN
+        - NET_WERKPLEKKEN
+        - NET_MANAGEMENT
+
+    # VLAN 30 WERKPLEKKEN
+    - name: VLAN30 - Werkplekken naar Grafana
+      pfsensible.core.pfsense_rule:
+        name: "VLAN30 allow Grafana"
+        interface: "{{ pfsense_if_werkplekken }}"
+        action: pass
+        protocol: tcp
+        source: NET_WERKPLEKKEN
+        destination: SOC_SERVER
+        destination_port: "3000"
+        descr: "Werkplekken mogen Grafana dashboard bekijken"
+        state: present
+
+    - name: VLAN30 - Werkplekken naar Zammad
+      pfsensible.core.pfsense_rule:
+        name: "VLAN30 allow Zammad"
+        interface: "{{ pfsense_if_werkplekken }}"
+        action: pass
+        protocol: tcp
+        source: NET_WERKPLEKKEN
+        destination: TICKETING_SERVER
+        destination_port: "8080"
+        descr: "Werkplekken mogen ticketsysteem gebruiken"
+        state: present
+
+    - name: VLAN30 - Werkplekken naar Keycloak
+      pfsensible.core.pfsense_rule:
+        name: "VLAN30 allow Keycloak"
+        interface: "{{ pfsense_if_werkplekken }}"
+        action: pass
+        protocol: tcp
+        source: NET_WERKPLEKKEN
+        destination: IDENTITY_VIP
+        destination_port: PORT_KEYCLOAK
+        descr: "Werkplekken mogen SSO gebruiken"
+        state: present
+
+    - name: VLAN30 - Werkplekken DNS en web internet
+      pfsensible.core.pfsense_rule:
+        name: "VLAN30 allow {{ item.name }}"
+        interface: "{{ pfsense_if_werkplekken }}"
+        action: pass
+        protocol: "{{ item.protocol }}"
+        source: NET_WERKPLEKKEN
+        destination: "{{ item.destination }}"
+        destination_port: "{{ item.port }}"
+        descr: "{{ item.descr }}"
+        state: present
+      loop:
+        - { name: DNS, protocol: any, destination: DNS_SERVER, port: PORT_DNS, descr: "Werkplekken mogen DNS gebruiken" }
+        - { name: web-internet, protocol: tcp, destination: any, port: PORT_WEB, descr: "Werkplekken mogen HTTP/HTTPS naar internet" }
+
+    - name: VLAN30 - Blokkeer ongewenste interne toegang
+      pfsensible.core.pfsense_rule:
+        name: "VLAN30 block {{ item }}"
+        interface: "{{ pfsense_if_werkplekken }}"
+        action: block
+        protocol: any
+        source: NET_WERKPLEKKEN
+        destination: "{{ item }}"
+        descr: "Werkplekken niet naar {{ item }}"
+        log: true
+        state: present
+      loop:
+        - NET_GASTEN
+        - NET_OBSERVABILITY
+        - NET_SECURITY
+        - NET_MANAGEMENT
+
+    # VLAN 40 SECURITY
+    - name: VLAN40 - Security naar SOC stack
+      pfsensible.core.pfsense_rule:
+        name: "VLAN40 allow SOC stack"
+        interface: "{{ pfsense_if_security }}"
+        action: pass
+        protocol: tcp
+        source: NET_SECURITY
+        destination: SOC_SERVER
+        destination_port: PORT_SOC_DASHBOARDS
+        descr: "Security tooling naar SOC-stack"
+        state: present
+
+    - name: VLAN40 - Security naar Wazuh agent poorten
+      pfsensible.core.pfsense_rule:
+        name: "VLAN40 allow Wazuh agent"
+        interface: "{{ pfsense_if_security }}"
+        action: pass
+        protocol: tcp
+        source: NET_SECURITY
+        destination: SOC_SERVER
+        destination_port: PORT_WAZUH_AGENT
+        descr: "Security tooling naar Wazuh manager"
+        state: present
+
+    - name: VLAN40 - Security naar Zammad en Keycloak
+      pfsensible.core.pfsense_rule:
+        name: "VLAN40 allow {{ item.name }}"
+        interface: "{{ pfsense_if_security }}"
+        action: pass
+        protocol: tcp
+        source: NET_SECURITY
+        destination: "{{ item.destination }}"
+        destination_port: "{{ item.port }}"
+        descr: "{{ item.descr }}"
+        state: present
+      loop:
+        - { name: Zammad, destination: TICKETING_SERVER, port: PORT_ZAMMAD, descr: "Security alerts naar Zammad en bridge" }
+        - { name: Keycloak, destination: IDENTITY_VIP, port: PORT_KEYCLOAK, descr: "Security naar SSO" }
+        - { name: internet, destination: any, port: PORT_WEB, descr: "Security updates en feeds" }
+
+    - name: VLAN40 - Blokkeer ongewenste interne toegang
+      pfsensible.core.pfsense_rule:
+        name: "VLAN40 block {{ item }}"
+        interface: "{{ pfsense_if_security }}"
+        action: block
+        protocol: any
+        source: NET_SECURITY
+        destination: "{{ item }}"
+        descr: "Security niet naar {{ item }}"
+        log: true
+        state: present
+      loop:
+        - NET_GASTEN
+        - NET_WERKPLEKKEN
+        - NET_MANAGEMENT
+
+    # SERVER/SERVICE netwerk
+    - name: SERVICES - SOC naar Zammad bridge
+      pfsensible.core.pfsense_rule:
+        name: "SERVICES allow SOC to Zammad bridge"
+        interface: "{{ pfsense_if_services }}"
+        action: pass
+        protocol: tcp
+        source: SOC_SERVER
+        destination: TICKETING_SERVER
+        destination_port: "8081"
+        descr: "Alertmanager/Wazuh naar ticket bridge"
+        state: present
+
+    - name: SERVICES - SOC naar Keycloak
+      pfsensible.core.pfsense_rule:
+        name: "SERVICES allow SOC to Keycloak"
+        interface: "{{ pfsense_if_services }}"
+        action: pass
+        protocol: tcp
+        source: SOC_SERVER
+        destination: IDENTITY_VIP
+        destination_port: PORT_KEYCLOAK
+        descr: "Grafana OIDC naar Keycloak VIP"
+        state: present
+
+    - name: SERVICES - Identity nodes onderling
+      pfsensible.core.pfsense_rule:
+        name: "SERVICES allow identity nodes"
+        interface: "{{ pfsense_if_services }}"
+        action: pass
+        protocol: any
+        source: IDENTITY_1
+        destination: IDENTITY_2
+        descr: "Identity nodes onderling voor LDAP/keepalived labverkeer"
+        state: present
+
+    - name: SERVICES - Identity nodes onderling terugrichting
+      pfsensible.core.pfsense_rule:
+        name: "SERVICES allow identity nodes return"
+        interface: "{{ pfsense_if_services }}"
+        action: pass
+        protocol: any
+        source: IDENTITY_2
+        destination: IDENTITY_1
+        descr: "Identity nodes onderling terugrichting"
+        state: present
+
+    - name: SERVICES - Services DNS en internet updates
+      pfsensible.core.pfsense_rule:
+        name: "SERVICES allow {{ item.name }}"
+        interface: "{{ pfsense_if_services }}"
+        action: pass
+        protocol: "{{ item.protocol }}"
+        source: NET_SERVICES
+        destination: "{{ item.destination }}"
+        destination_port: "{{ item.port }}"
+        descr: "{{ item.descr }}"
+        state: present
+      loop:
+        - { name: DNS, protocol: any, destination: DNS_SERVER, port: PORT_DNS, descr: "Servers mogen DNS gebruiken" }
+        - { name: web-internet, protocol: tcp, destination: any, port: PORT_WEB, descr: "Servers mogen updates downloaden" }
+
+    - name: SERVICES - Blokkeer services naar ongewenste interne netten
+      pfsensible.core.pfsense_rule:
+        name: "SERVICES block {{ item }}"
+        interface: "{{ pfsense_if_services }}"
+        action: block
+        protocol: any
+        source: NET_SERVICES
+        destination: "{{ item }}"
+        descr: "Services niet naar {{ item }}"
+        log: true
+        state: present
+      loop:
+        - NET_GASTEN
+        - NET_WERKPLEKKEN
+        - NET_MANAGEMENT
+
+    # WAN/IPsec basis
+    - name: WAN - Sta IPsec IKE/NAT-T toe
+      pfsensible.core.pfsense_rule:
+        name: "WAN allow IPsec"
+        interface: "{{ pfsense_if_wan }}"
+        action: pass
+        protocol: udp
+        source: any
+        destination: any
+        destination_port: "500 4500"
+        descr: "IPsec IKE en NAT-T voor remote monitoring"
+        state: present
+
+    - name: Floating/all - Blokkeer management vanaf niet-management
+      pfsensible.core.pfsense_rule:
+        name: "BLOCK management from all"
+        interface: floating
+        action: block
+        protocol: any
+        source: any
+        destination: NET_MANAGEMENT
+        descr: "Management VLAN afschermen"
+        log: true
+        state: present
