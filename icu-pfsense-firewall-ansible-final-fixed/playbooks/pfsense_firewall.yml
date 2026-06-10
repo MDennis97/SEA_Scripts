@@ -1,0 +1,676 @@
+---
+- name: Configureer ICU-01 pfSense firewallregels op redundant firewallpaar
+  hosts: pfsense
+  gather_facts: false
+
+  tasks:
+    # ============================================================
+    # Port aliases aanmaken
+    # Nodig omdat pfsense_rule geen comma-separated poorten accepteert
+    # ============================================================
+
+    - name: Maak port alias PORTS_WEB aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_WEB"
+        type: port
+        address: "80 443"
+        descr: "HTTP en HTTPS"
+        state: present
+
+    - name: Maak port alias PORTS_DNS aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_DNS"
+        type: port
+        address: "53"
+        descr: "DNS"
+        state: present
+
+    - name: Maak port alias PORTS_NTP aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_NTP"
+        type: port
+        address: "123"
+        descr: "NTP"
+        state: present
+
+    - name: Maak port alias PORTS_SSH aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_SSH"
+        type: port
+        address: "22"
+        descr: "SSH"
+        state: present
+
+    - name: Maak port alias PORTS_MONITORING aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_MONITORING"
+        type: port
+        address: "3000 9090 9093"
+        descr: "Grafana Prometheus Alertmanager"
+        state: present
+
+    - name: Maak port alias PORTS_OBSERVABILITY_STACK aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_OBSERVABILITY_STACK"
+        type: port
+        address: "3000 9090 9093 3100 3200 9200 55000"
+        descr: "Observability en SIEM stack"
+        state: present
+
+    - name: Maak port alias PORTS_WAZUH_AGENT aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_WAZUH_AGENT"
+        type: port
+        address: "1514 1515"
+        descr: "Wazuh agent en enrollment"
+        state: present
+
+    - name: Maak port alias PORTS_WAZUH_API aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_WAZUH_API"
+        type: port
+        address: "55000"
+        descr: "Wazuh API"
+        state: present
+
+    - name: Maak port alias PORTS_TICKETING aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_TICKETING"
+        type: port
+        address: "8080 8081"
+        descr: "Zammad en ticket bridge"
+        state: present
+
+    - name: Maak port alias PORTS_KEYCLOAK aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_KEYCLOAK"
+        type: port
+        address: "8080"
+        descr: "Keycloak"
+        state: present
+
+    - name: Maak port alias PORTS_LDAP aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_LDAP"
+        type: port
+        address: "389 636"
+        descr: "LDAP en LDAPS"
+        state: present
+
+    - name: Maak port alias PORTS_IPSEC aan
+      pfsensible.core.pfsense_alias:
+        name: "PORTS_IPSEC"
+        type: port
+        address: "500 4500"
+        descr: "IPsec IKE en NAT-T"
+        state: present
+
+    # ============================================================
+    # DMZ INTERN - VLAN 424 - opt1
+    # ============================================================
+
+    - name: DMZ Intern allow DNS naar DNS1
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_INTERN allow DNS to DNS1"
+        interface: "{{ pfsense_if_dmz_intern }}"
+        action: pass
+        protocol: any
+        source: "{{ net_dmz_intern }}"
+        destination: "{{ dns_server_1 }}"
+        state: present
+
+    - name: DMZ Intern allow DNS naar DNS2
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_INTERN allow DNS to DNS2"
+        interface: "{{ pfsense_if_dmz_intern }}"
+        action: pass
+        protocol: any
+        source: "{{ net_dmz_intern }}"
+        destination: "{{ dns_server_2 }}"
+        state: present
+
+    - name: DMZ Intern allow NTP naar NTP1
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_INTERN allow NTP to NTP1"
+        interface: "{{ pfsense_if_dmz_intern }}"
+        action: pass
+        protocol: udp
+        source: "{{ net_dmz_intern }}"
+        destination: "{{ ntp_server_1 }}"
+        destination_port: "{{ ports_ntp }}"
+        state: present
+
+    - name: DMZ Intern allow NTP naar NTP2
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_INTERN allow NTP to NTP2"
+        interface: "{{ pfsense_if_dmz_intern }}"
+        action: pass
+        protocol: udp
+        source: "{{ net_dmz_intern }}"
+        destination: "{{ ntp_server_2 }}"
+        destination_port: "{{ ports_ntp }}"
+        state: present
+
+    - name: DMZ Intern allow Wazuh logging naar Wazuh1
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_INTERN allow Wazuh logging to Wazuh1"
+        interface: "{{ pfsense_if_dmz_intern }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_dmz_intern }}"
+        destination: "{{ wazuh_1 }}"
+        destination_port: "{{ ports_wazuh_agent }}"
+        state: present
+
+    - name: DMZ Intern allow Wazuh logging naar Wazuh2
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_INTERN allow Wazuh logging to Wazuh2"
+        interface: "{{ pfsense_if_dmz_intern }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_dmz_intern }}"
+        destination: "{{ wazuh_2 }}"
+        destination_port: "{{ ports_wazuh_agent }}"
+        state: present
+
+    - name: DMZ Intern allow internet updates
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_INTERN allow internet updates"
+        interface: "{{ pfsense_if_dmz_intern }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_dmz_intern }}"
+        destination: any
+        destination_port: "{{ ports_web }}"
+        state: present
+
+    - name: DMZ Intern block naar IAM
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_INTERN block to IAM"
+        interface: "{{ pfsense_if_dmz_intern }}"
+        action: block
+        protocol: any
+        source: "{{ net_dmz_intern }}"
+        destination: "{{ net_iam }}"
+        log: true
+        state: present
+
+    - name: DMZ Intern block naar Management
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_INTERN block to Management"
+        interface: "{{ pfsense_if_dmz_intern }}"
+        action: block
+        protocol: any
+        source: "{{ net_dmz_intern }}"
+        destination: "{{ net_management }}"
+        log: true
+        state: present
+
+    # ============================================================
+    # NETWORK SERVERS - VLAN 425 - opt2
+    # ============================================================
+
+    - name: Network Servers allow internet updates
+      pfsensible.core.pfsense_rule:
+        name: "NETWORK_SERVERS allow internet updates"
+        interface: "{{ pfsense_if_network_servers }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_network_servers }}"
+        destination: any
+        destination_port: "{{ ports_web }}"
+        state: present
+
+    - name: Network Servers allow Wazuh logging 1
+      pfsensible.core.pfsense_rule:
+        name: "NETWORK_SERVERS allow Wazuh logging 1"
+        interface: "{{ pfsense_if_network_servers }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_network_servers }}"
+        destination: "{{ wazuh_1 }}"
+        destination_port: "{{ ports_wazuh_agent }}"
+        state: present
+
+    - name: Network Servers allow Wazuh logging 2
+      pfsensible.core.pfsense_rule:
+        name: "NETWORK_SERVERS allow Wazuh logging 2"
+        interface: "{{ pfsense_if_network_servers }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_network_servers }}"
+        destination: "{{ wazuh_2 }}"
+        destination_port: "{{ ports_wazuh_agent }}"
+        state: present
+
+    - name: Network Servers block naar werkplekken
+      pfsensible.core.pfsense_rule:
+        name: "NETWORK_SERVERS block to workstations"
+        interface: "{{ pfsense_if_network_servers }}"
+        action: block
+        protocol: any
+        source: "{{ net_network_servers }}"
+        destination: "{{ net_werkplekken }}"
+        log: true
+        state: present
+
+    - name: Network Servers block naar Management
+      pfsensible.core.pfsense_rule:
+        name: "NETWORK_SERVERS block to Management"
+        interface: "{{ pfsense_if_network_servers }}"
+        action: block
+        protocol: any
+        source: "{{ net_network_servers }}"
+        destination: "{{ net_management }}"
+        log: true
+        state: present
+
+    # ============================================================
+    # OBSERVABILITY - VLAN 426 - opt3
+    # ============================================================
+
+    - name: Observability allow intern observability verkeer
+      pfsensible.core.pfsense_rule:
+        name: "OBSERVABILITY allow internal monitoring traffic"
+        interface: "{{ pfsense_if_observability }}"
+        action: pass
+        protocol: any
+        source: "{{ net_observability }}"
+        destination: "{{ net_observability }}"
+        state: present
+
+    - name: Observability allow ticketing
+      pfsensible.core.pfsense_rule:
+        name: "OBSERVABILITY allow ticketing"
+        interface: "{{ pfsense_if_observability }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_observability }}"
+        destination: "{{ ticketing_server }}"
+        destination_port: "{{ ports_ticketing }}"
+        state: present
+
+    - name: Observability allow Keycloak 1
+      pfsensible.core.pfsense_rule:
+        name: "OBSERVABILITY allow Keycloak1"
+        interface: "{{ pfsense_if_observability }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_observability }}"
+        destination: "{{ keycloak_1 }}"
+        destination_port: "{{ ports_keycloak }}"
+        state: present
+
+    - name: Observability allow Keycloak 2
+      pfsensible.core.pfsense_rule:
+        name: "OBSERVABILITY allow Keycloak2"
+        interface: "{{ pfsense_if_observability }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_observability }}"
+        destination: "{{ keycloak_2 }}"
+        destination_port: "{{ ports_keycloak }}"
+        state: present
+
+    - name: Observability allow internet updates and feeds
+      pfsensible.core.pfsense_rule:
+        name: "OBSERVABILITY allow internet updates feeds"
+        interface: "{{ pfsense_if_observability }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_observability }}"
+        destination: any
+        destination_port: "{{ ports_web }}"
+        state: present
+
+    - name: Observability block naar werkplekken
+      pfsensible.core.pfsense_rule:
+        name: "OBSERVABILITY block to workstations"
+        interface: "{{ pfsense_if_observability }}"
+        action: block
+        protocol: any
+        source: "{{ net_observability }}"
+        destination: "{{ net_werkplekken }}"
+        log: true
+        state: present
+
+    - name: Observability block naar Management
+      pfsensible.core.pfsense_rule:
+        name: "OBSERVABILITY block to Management"
+        interface: "{{ pfsense_if_observability }}"
+        action: block
+        protocol: any
+        source: "{{ net_observability }}"
+        destination: "{{ net_management }}"
+        log: true
+        state: present
+
+    # ============================================================
+    # INTERNAL ACCESS - VLAN 427 - opt4
+    # ============================================================
+
+    - name: Internal Access allow monitoring 1
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS allow monitoring1"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_internal_access }}"
+        destination: "{{ monitoring_1 }}"
+        destination_port: "{{ ports_monitoring }}"
+        state: present
+
+    - name: Internal Access allow monitoring 2
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS allow monitoring2"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_internal_access }}"
+        destination: "{{ monitoring_2 }}"
+        destination_port: "{{ ports_monitoring }}"
+        state: present
+
+    - name: Internal Access allow Wazuh API 1
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS allow Wazuh API 1"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_internal_access }}"
+        destination: "{{ wazuh_1 }}"
+        destination_port: "{{ ports_wazuh_api }}"
+        state: present
+
+    - name: Internal Access allow Wazuh API 2
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS allow Wazuh API 2"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_internal_access }}"
+        destination: "{{ wazuh_2 }}"
+        destination_port: "{{ ports_wazuh_api }}"
+        state: present
+
+    - name: Bastion 1 allow SSH naar datacenter
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS bastion1 SSH to datacenter"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: pass
+        protocol: tcp
+        source: "{{ bastion_1 }}"
+        destination: "{{ net_all_internal }}"
+        destination_port: "{{ ports_ssh }}"
+        state: present
+
+    - name: Bastion 2 allow SSH naar datacenter
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS bastion2 SSH to datacenter"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: pass
+        protocol: tcp
+        source: "{{ bastion_2 }}"
+        destination: "{{ net_all_internal }}"
+        destination_port: "{{ ports_ssh }}"
+        state: present
+
+    - name: Internal Access allow Keycloak 1
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS allow Keycloak1"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_internal_access }}"
+        destination: "{{ keycloak_1 }}"
+        destination_port: "{{ ports_keycloak }}"
+        state: present
+
+    - name: Internal Access allow Keycloak 2
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS allow Keycloak2"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_internal_access }}"
+        destination: "{{ keycloak_2 }}"
+        destination_port: "{{ ports_keycloak }}"
+        state: present
+
+    - name: Internal Access allow Zammad
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS allow Zammad"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_internal_access }}"
+        destination: "{{ ticketing_server }}"
+        destination_port: "8080"
+        state: present
+
+    - name: Internal Access block naar Management
+      pfsensible.core.pfsense_rule:
+        name: "INTERNAL_ACCESS block to Management"
+        interface: "{{ pfsense_if_internal_access }}"
+        action: block
+        protocol: any
+        source: "{{ net_internal_access }}"
+        destination: "{{ net_management }}"
+        log: true
+        state: present
+
+    # ============================================================
+    # IAM - VLAN 428 - opt5
+    # ============================================================
+
+    - name: IAM Keycloak1 allow LDAP1
+      pfsensible.core.pfsense_rule:
+        name: "IAM Keycloak1 to LDAP1"
+        interface: "{{ pfsense_if_iam }}"
+        action: pass
+        protocol: tcp
+        source: "{{ keycloak_1 }}"
+        destination: "{{ ldap_1 }}"
+        destination_port: "{{ ports_ldap }}"
+        state: present
+
+    - name: IAM Keycloak2 allow LDAP2
+      pfsensible.core.pfsense_rule:
+        name: "IAM Keycloak2 to LDAP2"
+        interface: "{{ pfsense_if_iam }}"
+        action: pass
+        protocol: tcp
+        source: "{{ keycloak_2 }}"
+        destination: "{{ ldap_2 }}"
+        destination_port: "{{ ports_ldap }}"
+        state: present
+
+    - name: IAM allow Wazuh logging 1
+      pfsensible.core.pfsense_rule:
+        name: "IAM allow Wazuh logging 1"
+        interface: "{{ pfsense_if_iam }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_iam }}"
+        destination: "{{ wazuh_1 }}"
+        destination_port: "{{ ports_wazuh_agent }}"
+        state: present
+
+    - name: IAM allow Wazuh logging 2
+      pfsensible.core.pfsense_rule:
+        name: "IAM allow Wazuh logging 2"
+        interface: "{{ pfsense_if_iam }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_iam }}"
+        destination: "{{ wazuh_2 }}"
+        destination_port: "{{ ports_wazuh_agent }}"
+        state: present
+
+    - name: IAM allow DNS1
+      pfsensible.core.pfsense_rule:
+        name: "IAM allow DNS1"
+        interface: "{{ pfsense_if_iam }}"
+        action: pass
+        protocol: any
+        source: "{{ net_iam }}"
+        destination: "{{ dns_server_1 }}"
+        state: present
+
+    - name: IAM allow DNS2
+      pfsensible.core.pfsense_rule:
+        name: "IAM allow DNS2"
+        interface: "{{ pfsense_if_iam }}"
+        action: pass
+        protocol: any
+        source: "{{ net_iam }}"
+        destination: "{{ dns_server_2 }}"
+        state: present
+
+    - name: IAM allow internet updates
+      pfsensible.core.pfsense_rule:
+        name: "IAM allow internet updates"
+        interface: "{{ pfsense_if_iam }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_iam }}"
+        destination: any
+        destination_port: "{{ ports_web }}"
+        state: present
+
+    - name: IAM block naar DMZ Extern
+      pfsensible.core.pfsense_rule:
+        name: "IAM block to DMZ_EXTERN"
+        interface: "{{ pfsense_if_iam }}"
+        action: block
+        protocol: any
+        source: "{{ net_iam }}"
+        destination: "{{ net_dmz_extern }}"
+        log: true
+        state: present
+
+    - name: IAM block naar werkplekken
+      pfsensible.core.pfsense_rule:
+        name: "IAM block to workstations"
+        interface: "{{ pfsense_if_iam }}"
+        action: block
+        protocol: any
+        source: "{{ net_iam }}"
+        destination: "{{ net_werkplekken }}"
+        log: true
+        state: present
+
+    - name: IAM block naar Management
+      pfsensible.core.pfsense_rule:
+        name: "IAM block to Management"
+        interface: "{{ pfsense_if_iam }}"
+        action: block
+        protocol: any
+        source: "{{ net_iam }}"
+        destination: "{{ net_management }}"
+        log: true
+        state: present
+
+    # ============================================================
+    # DMZ EXTERN - VLAN 429 - opt6
+    # ============================================================
+
+    - name: DMZ Extern allow reverse proxies naar webservers
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_EXTERN reverse proxies to webservers"
+        interface: "{{ pfsense_if_dmz_extern }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_dmz_extern }}"
+        destination: "{{ net_dmz_extern }}"
+        destination_port: "{{ ports_web }}"
+        state: present
+
+    - name: DMZ Extern allow public DNS
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_EXTERN allow public DNS"
+        interface: "{{ pfsense_if_dmz_extern }}"
+        action: pass
+        protocol: any
+        source: "{{ net_dmz_extern }}"
+        destination: "{{ net_dmz_extern }}"
+        state: present
+
+    - name: DMZ Extern allow internet updates
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_EXTERN allow internet updates"
+        interface: "{{ pfsense_if_dmz_extern }}"
+        action: pass
+        protocol: tcp
+        source: "{{ net_dmz_extern }}"
+        destination: any
+        destination_port: "{{ ports_web }}"
+        state: present
+
+    - name: DMZ Extern block naar interne 172.16 netwerken
+      pfsensible.core.pfsense_rule:
+        name: "DMZ_EXTERN block to internal networks"
+        interface: "{{ pfsense_if_dmz_extern }}"
+        action: block
+        protocol: any
+        source: "{{ net_dmz_extern }}"
+        destination: "{{ net_all_internal }}"
+        log: true
+        state: present
+
+    # ============================================================
+    # WAN
+    # ============================================================
+
+    - name: WAN allow HTTP HTTPS naar reverse proxy 1
+      pfsensible.core.pfsense_rule:
+        name: "WAN allow HTTP HTTPS to reverse proxy 1"
+        interface: "{{ pfsense_if_wan }}"
+        action: pass
+        protocol: tcp
+        source: any
+        destination: "{{ reverse_proxy_1 }}"
+        destination_port: "{{ ports_web }}"
+        state: present
+
+    - name: WAN allow HTTP HTTPS naar reverse proxy 2
+      pfsensible.core.pfsense_rule:
+        name: "WAN allow HTTP HTTPS to reverse proxy 2"
+        interface: "{{ pfsense_if_wan }}"
+        action: pass
+        protocol: tcp
+        source: any
+        destination: "{{ reverse_proxy_2 }}"
+        destination_port: "{{ ports_web }}"
+        state: present
+
+    - name: WAN allow DNS naar public DNS 1
+      pfsensible.core.pfsense_rule:
+        name: "WAN allow DNS to public DNS1"
+        interface: "{{ pfsense_if_wan }}"
+        action: pass
+        protocol: any
+        source: any
+        destination: "{{ public_dns_1 }}"
+        state: present
+
+    - name: WAN allow DNS naar public DNS 2
+      pfsensible.core.pfsense_rule:
+        name: "WAN allow DNS to public DNS2"
+        interface: "{{ pfsense_if_wan }}"
+        action: pass
+        protocol: any
+        source: any
+        destination: "{{ public_dns_2 }}"
+        state: present
+
+    - name: WAN allow IPsec IKE NAT-T
+      pfsensible.core.pfsense_rule:
+        name: "WAN allow IPsec IKE NAT-T"
+        interface: "{{ pfsense_if_wan }}"
+        action: pass
+        protocol: udp
+        source: any
+        destination: any
+        destination_port: "{{ ports_ipsec }}"
+        state: present
