@@ -1,42 +1,151 @@
 ---
-# ICU pfSense firewall automation - IP-plan uit Technisch Ontwerp / projectcontext
-# Deze waarden zijn in CIDR-notatie omdat pfSense/pfsensible dit verwacht.
+# ============================================================
+# ICU-01 pfSense firewall automation configuratie
+# Gebaseerd op Technisch Ontwerp + pfSense interface-overzicht
+# ============================================================
 
-# Netwerken / VLAN's
-net_gasten: "172.16.0.0/27"
-net_observability: "172.16.0.64/27"
+# pfSense login
+ansible_user: "admin"
+ansible_connection: "ssh"
+ansible_python_interpreter: "/usr/local/bin/python3"
+
+# ============================================================
+# pfSense interface namen
+# Deze namen komen uit pfSense console:
+# WAN  (wan)  -> vtnet0
+# LAN  (lan)  -> vtnet1
+# OPT1 (opt1) -> vtnet1.424
+# OPT2 (opt2) -> vtnet1.425
+# OPT3 (opt3) -> vtnet1.426
+# OPT4 (opt4) -> vtnet1.427
+# OPT5 (opt5) -> vtnet1.428
+# OPT6 (opt6) -> vtnet1.429
+# ============================================================
+
+pfsense_if_wan: "wan"
+pfsense_if_lan: "lan"
+
+pfsense_if_dmz_intern: "opt1"
+pfsense_if_network_servers: "opt2"
+pfsense_if_observability: "opt3"
+pfsense_if_internal_access: "opt4"
+pfsense_if_iam: "opt5"
+pfsense_if_dmz_extern: "opt6"
+
+# ============================================================
+# Netwerken uit Technisch Ontwerp
+# ============================================================
+
+# Interne services / kantoor VLAN's
+net_gasten: "172.16.0.0/26"
+net_intern_observability: "172.16.0.64/27"
 net_werkplekken: "172.16.0.96/27"
 net_security: "172.16.0.128/27"
 net_management: "172.16.0.160/27"
-net_services: "172.16.1.0/24"
 
-# Belangrijke servers
-soc_server: "172.16.1.70"
-ticketing_server: "172.16.1.71"
-identity_1: "172.16.1.132"
-identity_2: "172.16.1.133"
+# Datacenter VLAN's
+net_dmz_intern: "172.16.1.0/27"
+net_network_servers: "172.16.1.32/27"
+net_observability: "172.16.1.64/27"
+net_internal_access: "172.16.1.96/27"
+net_iam: "172.16.1.128/27"
+net_dmz_extern: "172.16.1.160/28"
+
+# IPsec netwerken
+net_ipsec_arnhem: "10.2.128.0/29"
+net_ipsec_klant: "10.2.128.8/29"
+
+# WAN / publieke DMZ uit TO
+wan_gateway_dmz: "10.22.66.1"
+reverse_proxy_1: "10.22.66.2"
+reverse_proxy_2: "10.22.66.3"
+webserver_1: "10.22.66.4"
+webserver_2: "10.22.66.5"
+public_dns_1: "10.22.66.6"
+public_dns_2: "10.22.66.7"
+
+# ============================================================
+# Hosts uit datacenter VLAN's
+# ============================================================
+
+# DMZ Intern - VLAN 424
+database_1: "172.16.1.6"
+database_2: "172.16.1.3"
+fileserver_1: "172.16.1.4"
+fileserver_2: "172.16.1.5"
+fileserver_vrp: "172.16.1.7"
+ca_dmz: "172.16.1.6"
+
+# Network Servers - VLAN 425
+dns_server_1: "172.16.1.35"
+dns_server_2: "172.16.1.44"
+dhcp_server_1: "172.16.1.36"
+dhcp_server_2: "172.16.1.37"
+ntp_server_1: "172.16.1.38"
+ntp_server_2: "172.16.1.39"
+root_ca_1: "172.16.1.40"
+root_ca_2: "172.16.1.41"
+issuing_ca_1: "172.16.1.42"
+issuing_ca_2: "172.16.1.43"
+
+# Observability - VLAN 426
+monitoring_1: "172.16.1.66"
+monitoring_2: "172.16.1.67"
+wazuh_1: "172.16.1.68"
+wazuh_2: "172.16.1.69"
+ticketing_server: "172.16.1.70"
+
+# Internal Access - VLAN 427
+vpn_1: "172.16.1.98"
+vpn_2: "172.16.1.99"
+bastion_1: "172.16.1.100"
+bastion_2: "172.16.1.101"
+soc_workstation_1: "172.16.1.103"
+soc_workstation_2: "172.16.1.104"
+
+# IAM - VLAN 428
+ldap_1: "172.16.1.130"
+ldap_2: "172.16.1.131"
+keycloak_1: "172.16.1.132"
+keycloak_2: "172.16.1.133"
+
+# Eventuele VIP, als jullie die gebruiken
 identity_vip: "172.16.1.134"
 
-# DNS: pas aan als jullie DNS niet op pfSense/interface/VIP draait.
-dns_server: "172.16.0.161"
+# ============================================================
+# Poorten
+# ============================================================
 
-# pfSense interfacenamen.
-# BELANGRIJK: dit moeten de pfSense interface names zijn zoals pfSense ze kent.
-# Check in pfSense via Interfaces > Assignments of via shell: ifconfig / pfctl -s Interfaces
-pfsense_if_gasten: "VLAN10_GASTEN"
-pfsense_if_observability: "VLAN20_OBSERVABILITY"
-pfsense_if_werkplekken: "VLAN30_WERKPLEKKEN"
-pfsense_if_security: "VLAN40_SECURITY"
-pfsense_if_services: "SERVICES"
-pfsense_if_wan: "WAN"
+web_ports:
+  - 80
+  - 443
 
-# Optioneel: extern klant-WAN-IP voor IPsec. Vul later echt in.
-customer_wan_ip: "any"
+dns_ports:
+  - 53
 
-# WAN publicatie website, alleen gebruiken als jullie een DMZ/webserver hebben.
-# Laat disabled als jullie dit niet hebben.
-enable_wan_web_publish: false
-web_server_or_vip: "172.16.1.80"
+dhcp_ports:
+  - 67
+  - 68
 
-# Logging op block-regels
-log_blocked: true
+ntp_ports:
+  - 123
+
+grafana_port: 3000
+prometheus_port: 9090
+alertmanager_port: 9093
+loki_port: 3100
+tempo_port: 3200
+elasticsearch_port: 9200
+
+wazuh_agent_port: 1514
+wazuh_enroll_port: 1515
+wazuh_api_port: 55000
+
+zammad_port: 8080
+ticket_bridge_port: 8081
+
+keycloak_port: 8080
+ldap_port: 389
+ldaps_port: 636
+
+ssh_port: 22
