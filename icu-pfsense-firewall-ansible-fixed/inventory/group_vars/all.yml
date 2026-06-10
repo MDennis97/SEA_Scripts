@@ -1,0 +1,42 @@
+---
+# ICU pfSense firewall automation - IP-plan uit Technisch Ontwerp / projectcontext
+# Deze waarden zijn in CIDR-notatie omdat pfSense/pfsensible dit verwacht.
+
+# Netwerken / VLAN's
+net_gasten: "172.16.0.0/27"
+net_observability: "172.16.0.64/27"
+net_werkplekken: "172.16.0.96/27"
+net_security: "172.16.0.128/27"
+net_management: "172.16.0.160/27"
+net_services: "172.16.1.0/24"
+
+# Belangrijke servers
+soc_server: "172.16.1.70"
+ticketing_server: "172.16.1.71"
+identity_1: "172.16.1.132"
+identity_2: "172.16.1.133"
+identity_vip: "172.16.1.134"
+
+# DNS: pas aan als jullie DNS niet op pfSense/interface/VIP draait.
+dns_server: "172.16.0.161"
+
+# pfSense interfacenamen.
+# BELANGRIJK: dit moeten de pfSense interface names zijn zoals pfSense ze kent.
+# Check in pfSense via Interfaces > Assignments of via shell: ifconfig / pfctl -s Interfaces
+pfsense_if_gasten: "VLAN10_GASTEN"
+pfsense_if_observability: "VLAN20_OBSERVABILITY"
+pfsense_if_werkplekken: "VLAN30_WERKPLEKKEN"
+pfsense_if_security: "VLAN40_SECURITY"
+pfsense_if_services: "SERVICES"
+pfsense_if_wan: "WAN"
+
+# Optioneel: extern klant-WAN-IP voor IPsec. Vul later echt in.
+customer_wan_ip: "any"
+
+# WAN publicatie website, alleen gebruiken als jullie een DMZ/webserver hebben.
+# Laat disabled als jullie dit niet hebben.
+enable_wan_web_publish: false
+web_server_or_vip: "172.16.1.80"
+
+# Logging op block-regels
+log_blocked: true
