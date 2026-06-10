@@ -1,0 +1,44 @@
+---
+# Cisco ACL IP-plan uit Technisch Ontwerp / projectcontext
+# LET OP: Cisco extended ACL's gebruiken network + wildcard mask, niet CIDR.
+
+# VLAN-netwerken
+net_gasten_network: "172.16.0.0"
+net_gasten_wildcard: "0.0.0.31"
+
+net_observability_network: "172.16.0.64"
+net_observability_wildcard: "0.0.0.31"
+
+net_werkplekken_network: "172.16.0.96"
+net_werkplekken_wildcard: "0.0.0.31"
+
+net_security_network: "172.16.0.128"
+net_security_wildcard: "0.0.0.31"
+
+net_management_network: "172.16.0.160"
+net_management_wildcard: "0.0.0.31"
+
+net_services_network: "172.16.1.0"
+net_services_wildcard: "0.0.0.255"
+
+# Overkoepelende interne range voor deny naar interne netwerken
+internal_network: "172.16.0.0"
+internal_wildcard: "0.0.255.255"
+
+# Belangrijke servers
+soc_server: "172.16.1.70"
+ticketing_server: "172.16.1.71"
+identity_1: "172.16.1.132"
+identity_2: "172.16.1.133"
+identity_vip: "172.16.1.134"
+
+# Pas dit aan als jullie DNS een andere host is.
+# Als pfSense DNS doet, zet hier het juiste gateway/VIP-adres neer.
+dns_server: "172.16.0.161"
+
+# Cisco interface namen. Pas aan naar jullie echte subinterfaces/SVI's.
+# Controleer met: show ip interface brief
+cisco_if_vlan10: "GigabitEthernet0/0/0.10"
+cisco_if_vlan20: "GigabitEthernet0/0/0.20"
+cisco_if_vlan30: "GigabitEthernet0/0/0.30"
+cisco_if_vlan40: "GigabitEthernet0/0/0.40"

@@ -1,0 +1,30 @@
+---
+- name: Configureer Cisco ACL's ICU
+  hosts: cisco
+  gather_facts: false
+
+  tasks:
+    - name: Maak rendered map aan op Ansible controller
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/../rendered"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      check_mode: false
+
+    - name: Render Cisco ACL configuratie lokaal
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/cisco_acl.j2"
+        dest: "{{ playbook_dir }}/../rendered/cisco_acls.cfg"
+        mode: "0644"
+      delegate_to: localhost
+      check_mode: false
+
+    - name: Toon locatie van gegenereerde config
+      ansible.builtin.debug:
+        msg: "Cisco ACL config staat lokaal in rendered/cisco_acls.cfg"
+
+    - name: Push Cisco ACL configuratie naar Cisco router/switch
+      cisco.ios.ios_config:
+        src: "{{ playbook_dir }}/../rendered/cisco_acls.cfg"
+        save_when: modified

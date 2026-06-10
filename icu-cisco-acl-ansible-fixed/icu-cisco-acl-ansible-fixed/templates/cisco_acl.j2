@@ -1,0 +1,75 @@
+no ip access-list extended ACL_VLAN10_GASTEN_IN
+no ip access-list extended ACL_VLAN20_OBSERVABILITY_IN
+no ip access-list extended ACL_VLAN30_WERKPLEKKEN_IN
+no ip access-list extended ACL_VLAN40_SECURITY_IN
+!
+ip access-list extended ACL_VLAN10_GASTEN_IN
+ remark VLAN10 GASTEN - DNS en internet, geen intern verkeer
+ permit udp {{ net_gasten_network }} {{ net_gasten_wildcard }} host {{ dns_server }} eq 53
+ permit tcp {{ net_gasten_network }} {{ net_gasten_wildcard }} host {{ dns_server }} eq 53
+ deny ip {{ net_gasten_network }} {{ net_gasten_wildcard }} {{ internal_network }} {{ internal_wildcard }} log
+ permit tcp {{ net_gasten_network }} {{ net_gasten_wildcard }} any eq 80
+ permit tcp {{ net_gasten_network }} {{ net_gasten_wildcard }} any eq 443
+ deny ip {{ net_gasten_network }} {{ net_gasten_wildcard }} any log
+!
+ip access-list extended ACL_VLAN20_OBSERVABILITY_IN
+ remark VLAN20 OBSERVABILITY - SOC, ticketing, SSO, DNS en updates
+ permit udp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ dns_server }} eq 53
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ dns_server }} eq 53
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ soc_server }} eq 3000
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ soc_server }} eq 9090
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ soc_server }} eq 9093
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ soc_server }} eq 3100
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ soc_server }} eq 3200
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ soc_server }} eq 9200
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ soc_server }} eq 55000
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ ticketing_server }} eq 8080
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ ticketing_server }} eq 8081
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} host {{ identity_vip }} eq 8080
+ deny ip {{ net_observability_network }} {{ net_observability_wildcard }} {{ internal_network }} {{ internal_wildcard }} log
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} any eq 80
+ permit tcp {{ net_observability_network }} {{ net_observability_wildcard }} any eq 443
+ deny ip {{ net_observability_network }} {{ net_observability_wildcard }} any log
+!
+ip access-list extended ACL_VLAN30_WERKPLEKKEN_IN
+ remark VLAN30 WERKPLEKKEN - dashboards, ticketing, SSO, DNS en internet
+ permit udp {{ net_werkplekken_network }} {{ net_werkplekken_wildcard }} host {{ dns_server }} eq 53
+ permit tcp {{ net_werkplekken_network }} {{ net_werkplekken_wildcard }} host {{ dns_server }} eq 53
+ permit tcp {{ net_werkplekken_network }} {{ net_werkplekken_wildcard }} host {{ soc_server }} eq 3000
+ permit tcp {{ net_werkplekken_network }} {{ net_werkplekken_wildcard }} host {{ ticketing_server }} eq 8080
+ permit tcp {{ net_werkplekken_network }} {{ net_werkplekken_wildcard }} host {{ identity_vip }} eq 8080
+ deny ip {{ net_werkplekken_network }} {{ net_werkplekken_wildcard }} {{ internal_network }} {{ internal_wildcard }} log
+ permit tcp {{ net_werkplekken_network }} {{ net_werkplekken_wildcard }} any eq 80
+ permit tcp {{ net_werkplekken_network }} {{ net_werkplekken_wildcard }} any eq 443
+ deny ip {{ net_werkplekken_network }} {{ net_werkplekken_wildcard }} any log
+!
+ip access-list extended ACL_VLAN40_SECURITY_IN
+ remark VLAN40 SECURITY - SOC, Wazuh, ticketing, SSO, DNS en updates
+ permit udp {{ net_security_network }} {{ net_security_wildcard }} host {{ dns_server }} eq 53
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} host {{ dns_server }} eq 53
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} host {{ soc_server }} eq 1514
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} host {{ soc_server }} eq 1515
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} host {{ soc_server }} eq 3000
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} host {{ soc_server }} eq 55000
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} host {{ soc_server }} eq 9200
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} host {{ ticketing_server }} eq 8080
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} host {{ ticketing_server }} eq 8081
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} host {{ identity_vip }} eq 8080
+ deny ip {{ net_security_network }} {{ net_security_wildcard }} {{ internal_network }} {{ internal_wildcard }} log
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} any eq 80
+ permit tcp {{ net_security_network }} {{ net_security_wildcard }} any eq 443
+ deny ip {{ net_security_network }} {{ net_security_wildcard }} any log
+!
+interface {{ cisco_if_vlan10 }}
+ ip access-group ACL_VLAN10_GASTEN_IN in
+!
+interface {{ cisco_if_vlan20 }}
+ ip access-group ACL_VLAN20_OBSERVABILITY_IN in
+!
+interface {{ cisco_if_vlan30 }}
+ ip access-group ACL_VLAN30_WERKPLEKKEN_IN in
+!
+interface {{ cisco_if_vlan40 }}
+ ip access-group ACL_VLAN40_SECURITY_IN in
+!
+end
